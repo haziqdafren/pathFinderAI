@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark: #111110;
+  --color-orange: #E8642A;
+  --color-orange-hover: #C24E18;
+  --color-bg: #F4F2EE;
+  --color-surface: #FFFFFF;
+  --color-border: #E5E2DC;
+  --color-text-primary: #111110;
+  --color-text-secondary: #5C5A54;
+  --color-text-hint: #AAA8A4;
+  --font-sans: "Inter", "system-ui", "sans-serif";
+  --radius-card: 12px;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-text-primary font-sans antialiased;
+  }
+}

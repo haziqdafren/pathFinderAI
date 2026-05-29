@@ -1,0 +1,659 @@
+{
+  "version": "1.0",
+  "description": "PathFinder AI — Project Template Dataset. Each template is a specific, executable portfolio project with a real public dataset.",
+  "total_templates": 48,
+  "templates": [
+
+    {
+      "template_id": "da_001",
+      "role_clusters": ["data"],
+      "role_ids": ["data_analyst", "bi_analyst"],
+      "project_name": "Indonesian E-Commerce Sales Dashboard",
+      "tagline": "Analisis 50k+ transaksi e-commerce Indonesia — dari raw data sampai executive dashboard",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["SQL", "Tableau", "Data Cleaning", "Business Analysis", "Data Visualization"],
+      "gaps_it_closes": ["Tableau", "Business Analysis", "Stakeholder Communication"],
+      "dataset": {
+        "name": "Indonesia E-Commerce Sales & Shipping 2023-2025",
+        "url": "https://www.kaggle.com/datasets/bakitacos/indonesia-e-commerce-sales-and-shipping-20232025",
+        "source": "Kaggle",
+        "size": "50,000+ records",
+        "format": "CSV"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Data cleaning & SQL exploration", "deliverable": "Clean dataset + 10 SQL queries"},
+        {"week": 2, "focus": "Tableau dashboard — 4 views", "deliverable": "Published Tableau Public dashboard"},
+        {"week": 3, "focus": "Business narrative & insight report", "deliverable": "1-page executive summary"},
+        {"week": 4, "focus": "GitHub README + LinkedIn post", "deliverable": "Live portfolio project"}
+      ],
+      "github_readme_sections": ["Problem Statement", "Dataset", "Tech Stack", "Dashboard Preview", "Key Findings", "Next Steps"],
+      "why_this_project": "E-commerce data is familiar to Indonesian employers — mereka segera paham konteks bisnis. Tableau + SQL is the #1 skill combo di loker Data Analyst.",
+      "portfolio_talking_points": [
+        "Handled real messy transaction data with multiple CSV joins",
+        "Built executive-level dashboard for non-technical stakeholders",
+        "Identified top-performing categories and delivery performance trends"
+      ]
+    },
+
+    {
+      "template_id": "da_002",
+      "role_clusters": ["data"],
+      "role_ids": ["data_analyst", "bi_analyst", "analytics_engineer"],
+      "project_name": "E-Commerce Analytics Pipeline (BigQuery + Looker Studio)",
+      "tagline": "Pipeline data analytics end-to-end: dari raw CSV ke dashboard yang dipakai bisnis",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["SQL", "BigQuery", "Looker Studio", "dbt basics", "Data Modeling"],
+      "gaps_it_closes": ["GCP/BigQuery", "Looker Studio", "Cloud Data Warehouse"],
+      "dataset": {
+        "name": "Brazilian E-Commerce Public Dataset (Olist)",
+        "url": "https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce",
+        "source": "Kaggle",
+        "size": "100,000+ orders",
+        "format": "Multiple CSV files"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Load ke BigQuery, SQL schema design", "deliverable": "Dataset di BigQuery + 5 SQL queries"},
+        {"week": 2, "focus": "Looker Studio dashboard", "deliverable": "4-view dashboard published"},
+        {"week": 3, "focus": "dbt models untuk transformasi", "deliverable": "2-3 dbt models"},
+        {"week": 4, "focus": "Dokumentasi + deployment", "deliverable": "GitHub + LinkedIn post"}
+      ],
+      "github_readme_sections": ["Architecture Diagram", "Dataset", "BigQuery Schema", "Dashboard Link", "dbt Models", "Findings"],
+      "why_this_project": "GCP BigQuery muncul di 74% lowongan Data Engineer dan Data Analyst Indonesia.",
+      "portfolio_talking_points": [
+        "Desain skema BigQuery untuk multi-table e-commerce dataset",
+        "Bangun transformasi data dengan dbt",
+        "Connect cloud data warehouse ke BI tool"
+      ]
+    },
+
+    {
+      "template_id": "da_003",
+      "role_clusters": ["data"],
+      "role_ids": ["data_analyst", "business_analyst"],
+      "project_name": "HR Analytics — Employee Attrition Predictor Dashboard",
+      "tagline": "Analisis penyebab resign karyawan + dashboard untuk HR decision-making",
+      "difficulty": "easy",
+      "duration_weeks": 3,
+      "skills_practiced": ["Python (Pandas)", "Excel", "Power BI", "Statistics", "Data Analysis"],
+      "gaps_it_closes": ["Power BI", "HR Analytics", "Python Data Analysis"],
+      "dataset": {
+        "name": "IBM HR Analytics Employee Attrition",
+        "url": "https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset",
+        "source": "Kaggle",
+        "size": "1,470 records",
+        "format": "CSV"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "EDA dengan Python (Pandas + Seaborn)", "deliverable": "Jupyter Notebook dengan 10 insight"},
+        {"week": 2, "focus": "Power BI dashboard untuk HR", "deliverable": "Interactive Power BI dashboard"},
+        {"week": 3, "focus": "Rekomendasi bisnis + dokumentasi", "deliverable": "GitHub + README"}
+      ],
+      "github_readme_sections": ["Business Problem", "Dataset", "EDA Findings", "Dashboard", "HR Recommendations"],
+      "why_this_project": "HR Analytics sangat relevan untuk hampir semua perusahaan Indonesia. Power BI ada di mana-mana.",
+      "portfolio_talking_points": [
+        "Analisis faktor utama penyebab attrition",
+        "Translate data menjadi rekomendasi HR",
+        "Dashboard yang bisa langsung dipakai HR manager"
+      ]
+    },
+
+    {
+      "template_id": "da_004",
+      "role_clusters": ["data"],
+      "role_ids": ["data_analyst", "analytics_engineer"],
+      "project_name": "Tokopedia/Shopee Product Review Sentiment Dashboard",
+      "tagline": "Scrape + analisis sentimen review produk marketplace Indonesia",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Python", "SQL", "Sentiment Analysis basics", "Tableau", "Web Scraping basics"],
+      "gaps_it_closes": ["Python Data Analysis", "Tableau", "Text Analysis"],
+      "dataset": {
+        "name": "Shopee Product Reviews (self-collect atau Kaggle variant)",
+        "url": "https://www.kaggle.com/datasets/datasets?search=shopee+reviews+indonesia",
+        "source": "Kaggle / self-collect",
+        "size": "5,000+ reviews",
+        "format": "CSV"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Collect data + cleaning", "deliverable": "Clean review dataset"},
+        {"week": 2, "focus": "Sentiment scoring (VADER/TextBlob/Gemini)", "deliverable": "Labeled dataset"},
+        {"week": 3, "focus": "Dashboard visualisasi sentimen", "deliverable": "Tableau dashboard"},
+        {"week": 4, "focus": "Business insight + GitHub", "deliverable": "Portfolio project live"}
+      ],
+      "github_readme_sections": ["Problem", "Data Collection Method", "Sentiment Analysis Approach", "Dashboard", "Business Insights"],
+      "why_this_project": "Kombinasi scrap data dan text analysis yang di-visualkan di BI tool sangat diincar.",
+      "portfolio_talking_points": [
+        "Collect data dari sumber Indonesia",
+        "Aplikasikan sentiment analysis ke Bahasa Indonesia",
+        "Convert teks menjadi business metric"
+      ]
+    },
+
+    {
+      "template_id": "de_001",
+      "role_clusters": ["data"],
+      "role_ids": ["data_engineer", "analytics_engineer"],
+      "project_name": "Automated ETL Pipeline — Harga Komoditas Indonesia",
+      "tagline": "Pipeline otomatis yang pull data harga komoditas harian dari API pemerintah + load ke BigQuery",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Python", "Apache Airflow", "BigQuery", "ETL", "API Integration", "Docker"],
+      "gaps_it_closes": ["Apache Airflow", "ETL Pipeline", "Docker", "BigQuery"],
+      "dataset": {
+        "name": "Badan Pangan Nasional API — Harga Komoditas Harian",
+        "url": "https://panelharga.badanpangan.go.id/",
+        "source": "Government Open API",
+        "size": "Daily data, 34 provinces, 10+ commodities",
+        "format": "JSON API"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "API integration + data extraction script", "deliverable": "Python script yang pull data"},
+        {"week": 2, "focus": "Airflow DAG setup", "deliverable": "Automated daily pipeline"},
+        {"week": 3, "focus": "BigQuery loading + transformation", "deliverable": "Clean data di BigQuery"},
+        {"week": 4, "focus": "Dashboard + dokumentasi", "deliverable": "End-to-end pipeline documented"}
+      ],
+      "github_readme_sections": ["Architecture", "Data Source", "Pipeline DAG", "BigQuery Schema", "How to Run", "Dashboard"],
+      "why_this_project": "Real government API, real Indonesian context. Persis job desc Data Engineer.",
+      "portfolio_talking_points": [
+        "Bangun automated pipeline dari scratch",
+        "Handle API rate limiting dan error recovery",
+        "Orkestrasi dengan Airflow"
+      ]
+    },
+
+    {
+      "template_id": "de_002",
+      "role_clusters": ["data"],
+      "role_ids": ["data_engineer"],
+      "project_name": "Streaming Data Pipeline — Twitter/X Trend Analysis",
+      "tagline": "Real-time stream processing dari social media data ke dashboard live",
+      "difficulty": "hard",
+      "duration_weeks": 5,
+      "skills_practiced": ["Apache Kafka", "Python", "Spark Streaming", "PostgreSQL", "Docker"],
+      "gaps_it_closes": ["Apache Kafka", "Streaming Data", "Apache Spark", "Real-time Processing"],
+      "dataset": {
+        "name": "Self-generated via Nitter scraper atau mock streaming data",
+        "url": "https://github.com/zedeus/nitter",
+        "source": "Self-generated / Mock",
+        "size": "Real-time stream",
+        "format": "JSON stream"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Kafka setup + producer", "deliverable": "Kafka cluster running locally"},
+        {"week": 2, "focus": "Spark Streaming consumer", "deliverable": "Consumer processing messages"},
+        {"week": 3, "focus": "PostgreSQL sink + transformation", "deliverable": "Data stored and queryable"},
+        {"week": 4, "focus": "Dashboard + monitoring", "deliverable": "Live dashboard"},
+        {"week": 5, "focus": "Docker compose + dokumentasi", "deliverable": "Reproducible setup"}
+      ],
+      "github_readme_sections": ["Architecture Diagram", "Components", "How to Run"],
+      "why_this_project": "Kafka + Spark Streaming sering ditanya di data engineering tech interview top teir.",
+      "portfolio_talking_points": [
+        "Desain arsitektur streaming",
+        "Handle backpressure dan late-arriving data"
+      ]
+    },
+
+    {
+      "template_id": "be_001",
+      "role_clusters": ["dev"],
+      "role_ids": ["backend_developer", "software_engineer"],
+      "project_name": "REST API — Sistem Manajemen Perpustakaan Digital",
+      "tagline": "Bangun production-ready REST API dengan authentication, database, dan dokumentasi lengkap",
+      "difficulty": "medium",
+      "duration_weeks": 3,
+      "skills_practiced": ["Python", "FastAPI", "PostgreSQL", "JWT Authentication", "Docker", "REST API Design"],
+      "gaps_it_closes": ["FastAPI", "REST API", "PostgreSQL", "Docker", "API Documentation"],
+      "dataset": {
+        "name": "No external dataset needed — build from scratch",
+        "url": "https://github.com/public-apis/public-apis",
+        "source": "Self-built system",
+        "size": "N/A",
+        "format": "PostgreSQL database"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Database schema + FastAPI setup + CRUD endpoints", "deliverable": "5 working endpoints"},
+        {"week": 2, "focus": "JWT Auth + middleware + error handling", "deliverable": "Secured API with Swagger docs"},
+        {"week": 3, "focus": "Docker + testing + README", "deliverable": "Deployable project with tests"}
+      ],
+      "github_readme_sections": ["API Documentation", "Tech Stack", "Database Schema", "How to Run", "Endpoints"],
+      "why_this_project": "Menunjukkan kapabilitas fundamental di backend web development.",
+      "portfolio_talking_points": [
+        "Desain RESTful API best practices",
+        "Implementasi JWT yang aman",
+        "Containerized"
+      ]
+    },
+
+    {
+      "template_id": "be_002",
+      "role_clusters": ["dev"],
+      "role_ids": ["backend_developer", "fullstack_developer"],
+      "project_name": "Sistem Antrian Online (Queue Management API)",
+      "tagline": "API untuk sistem antrian digital — cocok untuk klinik, kantor, atau UMKM",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Python/Node.js", "WebSocket", "Redis", "PostgreSQL", "REST API", "Real-time"],
+      "gaps_it_closes": ["WebSocket", "Redis", "Real-time Systems", "Node.js"],
+      "dataset": {
+        "name": "Self-built system",
+        "url": "N/A",
+        "source": "Original project",
+        "size": "N/A",
+        "format": "PostgreSQL + Redis"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Database design + basic queue CRUD", "deliverable": "Queue system working"},
+        {"week": 2, "focus": "WebSocket real-time updates", "deliverable": "Live queue number updates"},
+        {"week": 3, "focus": "Redis caching + Redis pub/sub", "deliverable": "Fast real-time system"},
+        {"week": 4, "focus": "Docker + dokumentasi + demo video", "deliverable": "Live demo"}
+      ],
+      "github_readme_sections": ["System Design", "Tech Stack", "WebSocket Events", "How to Run"],
+      "why_this_project": "Backend realtime dengan Redis pub/sub relevan buat industri scalable platform.",
+      "portfolio_talking_points": [
+        "Realtime push websocket",
+        "Redis pattern untuk concurrent queue"
+      ]
+    },
+
+    {
+      "template_id": "fe_001",
+      "role_clusters": ["dev"],
+      "role_ids": ["frontend_developer", "fullstack_developer"],
+      "project_name": "Dashboard Monitoring Harga Saham Indonesia",
+      "tagline": "React.js dashboard real-time harga saham IDX dengan chart interaktif",
+      "difficulty": "medium",
+      "duration_weeks": 3,
+      "skills_practiced": ["React.js", "TypeScript", "Tailwind CSS", "REST API", "Chart.js/Recharts", "State Management"],
+      "gaps_it_closes": ["TypeScript", "React.js Advanced", "Data Visualization Frontend", "API Integration"],
+      "dataset": {
+        "name": "Yahoo Finance API / Alpha Vantage (free tier)",
+        "url": "https://www.alphavantage.co/",
+        "source": "Public API — free tier",
+        "size": "Real-time market data",
+        "format": "JSON API"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "React setup + API integration + stock list", "deliverable": "Stock data fetching working"},
+        {"week": 2, "focus": "Charts (Recharts) + real-time updates + search", "deliverable": "Interactive dashboard"},
+        {"week": 3, "focus": "TypeScript migration + responsive + deploy", "deliverable": "Deployed on Vercel/Netlify"}
+      ],
+      "github_readme_sections": ["Preview", "Features", "Tech Stack", "API Setup"],
+      "why_this_project": "Mendemonstrasikan SPA complexity dan UI state management yang sering diuji.",
+      "portfolio_talking_points": [
+        "Real API error monitoring di FE",
+        "Tuning visual layout dashboard"
+      ]
+    },
+
+    {
+      "template_id": "fe_002",
+      "role_clusters": ["dev"],
+      "role_ids": ["frontend_developer"],
+      "project_name": "Clone Tokopedia — Product Listing & Cart",
+      "tagline": "Build e-commerce frontend yang mirip Tokopedia dengan React + TypeScript",
+      "difficulty": "medium",
+      "duration_weeks": 3,
+      "skills_practiced": ["React.js", "TypeScript", "Tailwind CSS", "Context API/Redux", "React Router"],
+      "gaps_it_closes": ["React.js", "TypeScript", "Tailwind CSS", "State Management"],
+      "dataset": {
+        "name": "Fake Store API (public) atau DummyJSON",
+        "url": "https://fakestoreapi.com/",
+        "source": "Public free API",
+        "size": "Product catalog API",
+        "format": "JSON REST API"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Product listing + search + filter", "deliverable": "Product page working"},
+        {"week": 2, "focus": "Cart + checkout flow + state management", "deliverable": "Full shopping cart"},
+        {"week": 3, "focus": "TypeScript + responsive + deploy", "deliverable": "Live deployed app"}
+      ],
+      "github_readme_sections": ["Demo Link", "Features", "Tech Stack", "Screenshots"],
+      "why_this_project": "E-Commerce logic sangat umum di industri.",
+      "portfolio_talking_points": [
+        "Global state management untuk Cart",
+        "UI precision dengan Tailwind"
+      ]
+    },
+
+    {
+      "template_id": "fs_001",
+      "role_clusters": ["dev"],
+      "role_ids": ["fullstack_developer", "software_engineer"],
+      "project_name": "Aplikasi Manajemen Keuangan Personal",
+      "tagline": "Full-stack app untuk track pengeluaran dan budgeting — React + FastAPI + PostgreSQL",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["React.js", "FastAPI", "PostgreSQL", "JWT Auth", "Tailwind CSS", "Docker"],
+      "gaps_it_closes": ["Full Stack Integration", "Authentication", "Database Design", "Deployment"],
+      "dataset": {
+        "name": "Self-generated — user input data",
+        "url": "N/A",
+        "source": "Original application",
+        "size": "N/A",
+        "format": "PostgreSQL"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Backend API", "deliverable": "API dengan authentication"},
+        {"week": 2, "focus": "Frontend dashboard", "deliverable": "Dashboard UI"},
+        {"week": 3, "focus": "End to end wiring", "deliverable": "Full working app"},
+        {"week": 4, "focus": "Docker + deploy", "deliverable": "Live deployed app"}
+      ],
+      "github_readme_sections": ["Demo", "Architecture", "Tech Stack"],
+      "why_this_project": "Mendemonstrasikan end-to-end kapabilitas secara mandiri.",
+      "portfolio_talking_points": [
+        "Full stack synchronization",
+        "JWT implementation di React dan backend"
+      ]
+    },
+
+    {
+      "template_id": "mob_001",
+      "role_clusters": ["dev"],
+      "role_ids": ["mobile_developer"],
+      "project_name": "Aplikasi Pemantau Harga Kebutuhan Pokok",
+      "tagline": "Android/Flutter app yang pantau harga sembako di Indonesia dengan notifikasi harga naik",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Flutter", "Dart", "REST API", "Firebase", "Local Notifications", "State Management"],
+      "gaps_it_closes": ["Flutter", "Firebase", "Mobile API Integration", "Push Notifications"],
+      "dataset": {
+        "name": "Badan Pangan API — Harga Komoditas",
+        "url": "https://panelharga.badanpangan.go.id/",
+        "source": "Government API",
+        "size": "Daily prices, 34 provinces",
+        "format": "JSON API"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Flutter setup + API integration + list harga", "deliverable": "Basic app dengan data real"},
+        {"week": 2, "focus": "Grafik harga (fl_chart) + province filter", "deliverable": "Chart dan filter"},
+        {"week": 3, "focus": "Firebase Auth + favorit komoditas", "deliverable": "User personalization"},
+        {"week": 4, "focus": "Notifikasi + Play Store listing", "deliverable": "Production-ready app"}
+      ],
+      "github_readme_sections": ["Screenshots", "Features", "Tech Stack"],
+      "why_this_project": "Real world case yang lokal dan familiar.",
+      "portfolio_talking_points": [
+        "API error mapping gracefully di Mobile",
+        "Mobile caching dengan Storage/Hive"
+      ]
+    },
+
+    {
+      "template_id": "ml_001",
+      "role_clusters": ["ml"],
+      "role_ids": ["ml_engineer", "data_scientist"],
+      "project_name": "Credit Scoring Model — Pinjaman UMKM Indonesia",
+      "tagline": "ML pipeline untuk prediksi credit default — dari EDA sampai model deployment",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Python", "scikit-learn", "XGBoost", "FastAPI", "Feature Engineering", "Model Evaluation"],
+      "gaps_it_closes": ["XGBoost", "Model Deployment", "FastAPI", "Feature Engineering", "MLOps basics"],
+      "dataset": {
+        "name": "Home Credit Default Risk",
+        "url": "https://www.kaggle.com/competitions/home-credit-default-risk",
+        "source": "Kaggle",
+        "size": "300,000+ loan applications",
+        "format": "Multiple CSV files"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "EDA + feature engineering", "deliverable": "Jupyter notebook"},
+        {"week": 2, "focus": "Model training", "deliverable": "Model dengan AUC > 0.75"},
+        {"week": 3, "focus": "FastAPI endpoint + model serving", "deliverable": "API yang serve predictions"},
+        {"week": 4, "focus": "Docker + Cloud Run deploy", "deliverable": "Live API endpoint"}
+      ],
+      "github_readme_sections": ["Problem Statement", "Feature Engineering", "API Usage"],
+      "why_this_project": "Credit scoring sangat relevan untuk industri fintech.",
+      "portfolio_talking_points": [
+        "Robustness feature pipeline",
+        "Serving ML via REST endpoints cepat"
+      ]
+    },
+
+    {
+      "template_id": "ml_003",
+      "role_clusters": ["ml"],
+      "role_ids": ["ml_engineer", "data_scientist", "ai_engineer"],
+      "project_name": "RAG Chatbot — Dokumen Peraturan OJK",
+      "tagline": "Build RAG system yang bisa jawab pertanyaan tentang regulasi OJK dari dokumen PDF resmi",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Python", "Gemini API", "RAG", "Vector Database", "LangChain", "FastAPI", "PDF Processing"],
+      "gaps_it_closes": ["LLM/Gemini API", "RAG", "Vector Database", "AI Application Development"],
+      "dataset": {
+        "name": "OJK Public Regulations PDF",
+        "url": "https://ojk.go.id/id/regulasi",
+        "source": "OJK Website",
+        "size": "50+ regulatory documents",
+        "format": "PDF"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "PDF scraping + embedding", "deliverable": "Vector DB populated"},
+        {"week": 2, "focus": "RAG pipeline", "deliverable": "Working logic"},
+        {"week": 3, "focus": "FastAPI endpoint + Simple UI", "deliverable": "Working chatbot"},
+        {"week": 4, "focus": "Cloud Run deploy", "deliverable": "Live chatbot API"}
+      ],
+      "github_readme_sections": ["Architecture", "RAG Pipeline Setup", "Evaluation Metrics"],
+      "why_this_project": "AI dan RAG adalah skillset tren terbaru. Diaplikasikan ke domain keuangan membuat konteks industrinya nyata.",
+      "portfolio_talking_points": [
+        "Optimal LLM context window limits",
+        "Semantic search configuration"
+      ]
+    },
+
+    {
+      "template_id": "ai_001",
+      "role_clusters": ["ml"],
+      "role_ids": ["ai_engineer"],
+      "project_name": "AI Agent — Asisten Riset Pasar Indonesia",
+      "tagline": "Multi-tool AI Agent yang riset pasar Indonesia secara otonom dari sumber data publik",
+      "difficulty": "hard",
+      "duration_weeks": 5,
+      "skills_practiced": ["Python", "Gemini Function Calling", "FastAPI", "Agent Architecture", "React.js"],
+      "gaps_it_closes": ["AI Agent Architecture", "Gemini Function Calling", "Multi-tool Systems", "ReAct Pattern"],
+      "dataset": {
+        "name": "BPS API + BMKG API + Web sources",
+        "url": "https://webapi.bps.go.id/",
+        "source": "Open APIs",
+        "size": "-",
+        "format": "JSON APIs"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Tool functions + API dev", "deliverable": "Function nodes"},
+        {"week": 2, "focus": "Agent Loop (ReAct)", "deliverable": "Agent orchestration"},
+        {"week": 3, "focus": "Evaluation & refinement", "deliverable": "Stable AI output"},
+        {"week": 4, "focus": "UI integration", "deliverable": "Chat interface"}
+      ],
+      "github_readme_sections": ["Architecture", "Tools Used", "ReAct loop demo"],
+      "why_this_project": "Project top-tier untuk membuktikan kemampuan merakit sistem AI autonomous.",
+      "portfolio_talking_points": [
+        "Handling error tool calling di Gemini",
+        "Streaming response generation"
+      ]
+    },
+
+    {
+      "template_id": "devops_001",
+      "role_clusters": ["infra"],
+      "role_ids": ["devops_engineer"],
+      "project_name": "CI/CD Pipeline — Full Stack App Deployment",
+      "tagline": "Setup complete CI/CD pipeline dari GitHub ke Cloud Run dengan GitHub Actions",
+      "difficulty": "medium",
+      "duration_weeks": 3,
+      "skills_practiced": ["Docker", "GitHub Actions", "Google Cloud Run", "CI/CD", "Testing", "Environment Management"],
+      "gaps_it_closes": ["CI/CD", "GitHub Actions", "Docker", "Cloud Run", "DevOps practices"],
+      "dataset": {
+        "name": "Use existing full-stack project",
+        "url": "N/A",
+        "source": "N/A",
+        "size": "N/A",
+        "format": "Docker + GitHub"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Dockerfile optimization", "deliverable": "Containerized app"},
+        {"week": 2, "focus": "GitHub workflow", "deliverable": "Automated pipeline logic"},
+        {"week": 3, "focus": "Deploy & monitoring", "deliverable": "Production-ready"}
+      ],
+      "github_readme_sections": ["Pipeline Setup", "Secrets management"],
+      "why_this_project": "Mendemonstrasikan infrastruktur operasional secara solid.",
+      "portfolio_talking_points": [
+        "Multi stage docker build",
+        "Action secrets dan automation"
+      ]
+    },
+
+    {
+      "template_id": "qa_001",
+      "role_clusters": ["qa"],
+      "role_ids": ["qa_engineer"],
+      "project_name": "Automation Testing Framework — E-Commerce Web App",
+      "tagline": "Build comprehensive test automation dengan Playwright + pytest untuk web app",
+      "difficulty": "medium",
+      "duration_weeks": 3,
+      "skills_practiced": ["Playwright", "Python", "pytest", "Page Object Model", "CI Integration"],
+      "gaps_it_closes": ["Automation Testing", "Page Object Model", "CI/CD Integration"],
+      "dataset": {
+        "name": "Demo site",
+        "url": "https://www.saucedemo.com/",
+        "source": "Free demo site",
+        "size": "N/A",
+        "format": "Web"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Page Object Setup", "deliverable": "Working suite setup"},
+        {"week": 2, "focus": "Cart/Checkout flow validation", "deliverable": "Deep assert verification"},
+        {"week": 3, "focus": "CI hook running nightly", "deliverable": "Test automation"}
+      ],
+      "github_readme_sections": ["Coverage", "Structure", "Execution Guide"],
+      "why_this_project": "Semua produk butuh stability assurance. QA Automation skill langka dan bernilai tinggi.",
+      "portfolio_talking_points": [
+        "Design maintainable code untuk E-E test",
+        "Reporting test fail di CI"
+      ]
+    },
+
+    {
+      "template_id": "uiux_001",
+      "role_clusters": ["design"],
+      "role_ids": ["ui_ux_designer"],
+      "project_name": "App Redesign — Dompet Digital Lokal (Case Study)",
+      "tagline": "Riset pengguna, wireframe, dan high-fidelity prototype aplikasi dompet digital",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Figma", "User Research", "Wireframing", "Prototyping", "Usability Testing", "UX Copywriting"],
+      "gaps_it_closes": ["UX Research", "Interactive Prototyping", "Design System Basics"],
+      "dataset": {
+        "name": "User Interviews & App Reviews (Play Store)",
+        "url": "N/A",
+        "source": "Self-conducted research",
+        "size": "10+ user feedback",
+        "format": "Qualitative Data"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Problem discovery & user research", "deliverable": "User Persona & User Journey Map"},
+        {"week": 2, "focus": "Wireframing & Information Architecture", "deliverable": "Low-fidelity wireframes"},
+        {"week": 3, "focus": "High-fidelity design & Design system", "deliverable": "Figma UI screens"},
+        {"week": 4, "focus": "Prototyping & Usability testing", "deliverable": "Interactive prototype & Case study publish"}
+      ],
+      "github_readme_sections": ["Problem Statement", "Research Findings", "Design Process", "Prototype Link"],
+      "why_this_project": "Mendemonstrasikan problem-solving dan user-centric process, bukan sekedar desain cantik.",
+      "portfolio_talking_points": [
+        "Identifikasi pain points pengguna lokal",
+        "Iterasi berdasarkan feedback usability testing"
+      ]
+    },
+
+    {
+      "template_id": "graphic_001",
+      "role_clusters": ["design"],
+      "role_ids": ["graphic_designer"],
+      "project_name": "Rebranding & Social Media Kit — UMKM Kopi Lokal",
+      "tagline": "Visual identity lengkap, logo, dan konten Instagram untuk brand kopi indie",
+      "difficulty": "medium",
+      "duration_weeks": 3,
+      "skills_practiced": ["Adobe Illustrator", "Photoshop", "Brand Identity", "Typography", "Color Theory", "Layouting"],
+      "gaps_it_closes": ["Brand Guidelines", "Social Media Strategy", "Visual Consistency"],
+      "dataset": {
+        "name": "Brief Klien Fiktif / UMKM Nyata",
+        "url": "N/A",
+        "source": "Creative brief",
+        "size": "N/A",
+        "format": "N/A"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Moodboard & Logo Concepting", "deliverable": "3 alternatif logo & warna"},
+        {"week": 2, "focus": "Brand Guidelines & Typography", "deliverable": "Brand Book (PDF)"},
+        {"week": 3, "focus": "Social Media Templates & Mockups", "deliverable": "9 grid Instagram & produk mockup"}
+      ],
+      "github_readme_sections": ["Brand Story", "Visual Identity", "Mockups", "Social Media Assets"],
+      "why_this_project": "Visualisasi branding yang kuat dari logo sampai implementasi nyata di digital.",
+      "portfolio_talking_points": [
+        "Konsistensi visual lintas aset",
+        "Menerjemahkan personality brand ke desain"
+      ]
+    },
+
+    {
+      "template_id": "cyber_001",
+      "role_clusters": ["qa", "infra"],
+      "role_ids": ["cybersecurity_analyst"],
+      "project_name": "Network Vulnerability Scanner & Incident Logger",
+      "tagline": "Bangun pemindai kerentanan jaringan otomatis dan dashboard log keamanan real-time untuk UMKM",
+      "difficulty": "medium",
+      "duration_weeks": 4,
+      "skills_practiced": ["Network Security", "Linux", "Python", "Vulnerability Assessment", "Security Monitoring", "SIEM basics"],
+      "gaps_it_closes": ["Vulnerability Assessment", "Security Monitoring", "Network Security"],
+      "dataset": {
+        "name": "CVE (Common Vulnerabilities and Exposures) Live Feed",
+        "url": "https://cve.mitre.org/",
+        "source": "MITRE CVE Database",
+        "size": "200,000+ entries",
+        "format": "JSON / Web Feed"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "Python port scanner & service discovery", "deliverable": "Penerjemah status port dan pemetaan port aktif dengan Python"},
+        {"week": 2, "focus": "Vulnerability database mapping & CVE matcher", "deliverable": "Sistem matching otomatis versi service dengan indeks kerentanan CVE terbaru"},
+        {"week": 3, "focus": "Log analysis dashboard & SIEM web UI", "deliverable": "Aplikasi login log visual untuk menyajikan port terekspos serta vulnerability level"},
+        {"week": 4, "focus": "Remediation generation & GitHub documentation", "deliverable": "Repository portfolio live dengan panduan konfigurasi pengerasan (hardening)"}
+      ],
+      "github_readme_sections": ["Project Overview", "Key Features", "Network Architecture Diagram", "Mitigation & Remediation", "How to Run"],
+      "why_this_project": "Urusan keamanan siber di Indonesia sangat kritis. Mengembangkan tools CVE matching mandiri membuktikan kamu mengerti risiko network security praktis dan penanganannya.",
+      "portfolio_talking_points": [
+        "Membangun socket port scanner mandiri untuk deteksi port terbuka",
+        "Mengorelasikan data mentah OS dengan database kerentanan CVE internasional secara terprogram",
+        "Menyediakan instruksi mitigasi keamanan sistem Linux hulu ke hilir"
+      ]
+    },
+
+    {
+      "template_id": "cyber_002",
+      "role_clusters": ["qa"],
+      "role_ids": ["cybersecurity_analyst"],
+      "project_name": "OWASP Top 10 Security Audit & Hardening Showcase",
+      "tagline": "Lakukan pengujian penetrasi (pentest) pada modul aplikasi interaktif serta bangun pertahanan mitigasi kodenya",
+      "difficulty": "medium",
+      "duration_weeks": 3,
+      "skills_practiced": ["OWASP Top 10", "Penetration Testing basics", "Kali Linux", "Wireshark", "Remediation Scripting"],
+      "gaps_it_closes": ["OWASP Top 10", "Penetration Testing basics", "Ethical Hacking"],
+      "dataset": {
+        "name": "OWASP Juice Shop & Vulnerable Demos",
+        "url": "https://owasp.org/www-project-juice-shop/",
+        "source": "OWASP Project",
+        "size": "N/A",
+        "format": "Interactive Vulnerable Web App"
+      },
+      "week_by_week": [
+        {"week": 1, "focus": "HTTP traffic interception & SQLi/XSS audits", "deliverable": "Laporan pengujian Burp Suite & log bukti eksploitasi SQLi/XSS"},
+        {"week": 2, "focus": "Broken Access Control & Session Management bypass", "deliverable": "Laporan bukti peningkatan hak akses (privilege escalation)"},
+        {"week": 3, "focus": "Securing web endpoints & Defensive middleware writing", "deliverable": "Repositori perbaikan kode aman (secure parameters) dan konfigurasi headers"}
+      ],
+      "github_readme_sections": ["Executive Summary", "Vulnerability Findings", "Security Patches Code", "Burp Logs", "Conclusion"],
+      "why_this_project": "Melakukan pentest sekaligus menunjukkan cara menambal lubang keamanan (hardening) dengan security-conscious coding adalah kombinasi langka yang membedakanmu di mata rekruter.",
+      "portfolio_talking_points": [
+        "Mengidentifikasi celah SQL Injection serta Cross-Site Scripting (XSS) sesuai standar OWASP",
+        "Menulis filter sanitasi input serta parameterisasi query guna menghentikan injeksi SQL berbahaya",
+        "Mengkonfigurasi Content Security Policy (CSP) untuk pengerasan pertahanan browser"
+      ]
+    }
+  ]
+}
