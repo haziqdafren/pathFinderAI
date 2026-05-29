@@ -11,7 +11,7 @@ create table users (
 -- Analyses (each time user runs analysis)
 create table analyses (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references users(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
   session_id text not null,
   user_name text,
   answers jsonb,
@@ -31,7 +31,8 @@ create table analyses (
   location text,
   timeline_months integer,
   lang text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  constraint analyses_user_session_key unique (user_id, session_id)
 );
 
 -- Job cache (prevent redundant scraping)
@@ -47,7 +48,7 @@ create table job_cache (
 -- Milestones (project progress)
 create table milestones (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references users(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
   analysis_id uuid references analyses(id) on delete cascade,
   week_number integer,
   task_text text,

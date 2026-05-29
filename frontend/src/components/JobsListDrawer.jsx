@@ -93,7 +93,7 @@ const CATEGORIES_JOBS = {
   ]
 };
 
-export default function JobsListDrawer({ isOpen, onClose, roleName, locationInput }) {
+export default function JobsListDrawer({ isOpen, onClose, roleName, locationInput, isLive }) {
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
 
@@ -217,7 +217,9 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
                   20 Lowongan {roleName} Terpilih
                 </h3>
                 <p className="text-[12.5px] text-muted-dark mt-1 mb-0 leading-relaxed">
-                  Gabungan dari 5+ platform kerja utama Indonesia, terfilter real-time sesuai preferensimu.
+                  {isLive 
+                    ? "Gabungan dari 5+ platform kerja utama Indonesia, terfilter real-time sesuai preferensimu."
+                    : "Data contoh fallback sebagai representasi dari platform kerja utama Indonesia, disesuaikan dengan preferensimu."}
                 </p>
               </div>
               <button 

@@ -68,11 +68,7 @@ export default function LoginScreen() {
   const handleGoogleLogin = async (e) => {
     e.preventDefault();
     if (!supabase) {
-      sessionStorage.setItem('logged_in', 'true');
-      localStorage.setItem('pathy_logged_in', 'true');
-      localStorage.setItem('pathy_shuffles_left', '3');
-      toast.success(isEn ? "Successfully logged in via virtual OAuth!" : "Berhasil masuk melalui virtual OAuth!");
-      navigate('/results');
+      toast.error(isEn ? "Supabase relies on API keys which are missing in this environment. Authentication is disabled." : "Supabase API Key tidak ditemukan di environment ini. Login dinonaktifkan.");
       return;
     }
 
@@ -131,6 +127,11 @@ export default function LoginScreen() {
     e.preventDefault();
     const email = e.target.elements[0].value;
     if (!email) return;
+
+    if (!supabase) {
+      toast.error(isEn ? "Supabase relies on API keys which are missing in this environment. Authentication is disabled." : "Supabase API Key tidak ditemukan di environment ini. Login dinonaktifkan.");
+      return;
+    }
 
     try {
       setIsLoadingMagic(true);

@@ -337,6 +337,10 @@ export default function ResultsScreen() {
                 { day: 90, title: "Mastery", task: "Deploy full responsive dashboard, ready for CV." }
               ],
               jobs_analyzed: row.jobs_analyzed || 0,
+              jobs_source: row.jobs_source || null,
+              is_live: typeof row.is_live === 'boolean' ? row.is_live : false,
+              fetched_at: row.fetched_at || null,
+              job_data_snapshot: row.job_data_snapshot || null,
               live_jobs: row.live_jobs || [
                 { title: "Junior Data Analyst", company: "Bukalapak", location: "Jakarta", match: 78, type: "Full-time" },
                 { title: "BI Analyst Intern", company: "Tokopedia", location: "Jakarta", match: 74, type: "Internship" },
@@ -633,7 +637,7 @@ export default function ResultsScreen() {
 
           <article id="jobs" className="col-span-1 md:col-span-3 bg-ink text-white border-0 rounded-[14px] p-[22px] flex flex-col justify-between min-h-[220px] relative overflow-hidden">
             <div>
-              {data.is_live !== false ? (
+              {data.is_live === true ? (
                 <div className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] uppercase bg-orange/20 text-orange-2 border border-orange/30 py-[3px] px-2 rounded-full mb-2 self-start before:content-[''] before:w-[5px] before:h-[5px] before:bg-orange before:rounded-full before:animate-[pulse_1.4s_ease-in-out_infinite]">
                   live multi-portal via JobSpy Engine
                 </div>
@@ -651,7 +655,7 @@ export default function ResultsScreen() {
             </div>
             <h2 className="text-[clamp(80px,9vw,132px)] leading-[0.85] font-medium tracking-[-0.045em] m-0">{data.jobs_analyzed || 20}</h2>
             <div className="text-[13px] text-white/60 leading-[1.5] tracking-[-0.005em]">
-              {data.is_live !== false ? (
+              {data.is_live === true ? (
                 isEn ? (
                   "Aggregated in real-time utilizing the JobSpy Scraper Engine to bundle listing feeds from Indeed, LinkedIn, and Glints for absolute confidence. No assumptions."
                 ) : (
@@ -812,8 +816,8 @@ export default function ResultsScreen() {
             <article className="col-span-1 md:col-span-12 bg-transparent p-0 mt-3 relative z-10">
               <div className="flex items-center justify-between mb-4 px-1">
                 <div className="font-mono text-[10px] text-ink-2 tracking-[0.14em] uppercase flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 ${data.is_live !== false ? 'bg-orange animate-pulse' : 'bg-muted-dark'} rounded-full`}></span>
-                  {data.is_live !== false 
+                  <span className={`w-1.5 h-1.5 ${data.is_live === true ? 'bg-orange animate-pulse' : 'bg-muted-dark'} rounded-full`}></span>
+                  {data.is_live === true 
                     ? (isEn ? `Live active ${topRoleName} openings today` : `Lowongan ${topRoleName} live hari ini`)
                     : (isEn ? `Sample matching openings for ${topRoleName}` : `Contoh lowongan cocok untuk ${topRoleName}`)
                   }
@@ -923,6 +927,7 @@ export default function ResultsScreen() {
           onClose={() => setShowJobsExplorer(false)} 
           roleName={topRoleName} 
           locationInput={data.location || (sessionStorage.getItem('pathfinder_answers') ? JSON.parse(sessionStorage.getItem('pathfinder_answers'))?.[3] : 'Jakarta')}
+          isLive={data.is_live === true}
         />
       </Suspense>
 

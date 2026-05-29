@@ -72,9 +72,9 @@ export default function HomeScreen() {
         </h1>
         <p className="text-white/55 text-[16px] leading-[1.7] mb-10 max-w-[540px]">
           {isEn ? (
-            "Pathy will analyze your background, find reachable roles based on live market data, and give concrete guidance with an exact targeted portfolio project."
+            "Pathy will analyze your background, find reachable roles based on matched market data, and give concrete guidance with an exact targeted portfolio project."
           ) : (
-            "Pathy akan bantu mengurai latar belakangmu, temukan role yang reachable berdasarkan data pasar live, dan berikan panduan konkret lewat satu proyek portfolio yang tepat sasaran."
+            "Pathy akan bantu mengurai latar belakangmu, temukan role yang reachable berdasarkan kecocokan data pasar, dan berikan panduan konkret lewat satu proyek portfolio yang tepat sasaran."
           )}
         </p>
 
@@ -108,7 +108,10 @@ export default function HomeScreen() {
 
       <footer className="relative z-10 mt-auto pt-6 border-t border-white/10 flex justify-between items-center text-[11px] font-mono tracking-[0.04em] text-white/40 uppercase">
         <div className="flex gap-4">
-          <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-orange animate-[pulse_1.6s_ease-in-out_infinite]"></span> Live from Indeed, LinkedIn & Glints • Powered by JobSpy Engine</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange"></span> 
+            {isEn ? "Powered by JobSpy Engine" : "Didukung oleh JobSpy Engine"}
+          </span>
           <span className="hidden sm:inline">
             {isEn ? "100+ Tech Roles Indexed" : "100+ Karir Tech Terindeks"}
           </span>

@@ -162,20 +162,23 @@ const simulatedSupabase = {
   }
 };
 
-export const supabase = realSupabase || simulatedSupabase;
+export const isSupabaseConfigured = Boolean(realSupabase);
+export const supabase = realSupabase || (import.meta.env.MODE === 'production' || import.meta.env.PROD ? null : simulatedSupabase);
 
 export const saveResultToSupabase = async (sessionData) => {
+  if (!supabase) return false;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
 
     const currentLang = localStorage.getItem('pref_lang') || 'id';
+    const finalSessionId = sessionData.session_id || 'local_session_' + Date.now();
 
     const { error } = await supabase
       .from('analyses')
       .upsert({
         user_id: user.id,
-        session_id: 'local_session_' + Date.now(),
+        session_id: finalSessionId,
         user_name: sessionData.user_name || localStorage.getItem('pathy_user_name') || 'Teman',
         answers: sessionData.answers,
         signal_chips: sessionData.signal_chips,
@@ -198,7 +201,7 @@ export const saveResultToSupabase = async (sessionData) => {
         },
         location: sessionData.location || 'Indonesia',
         lang: currentLang,
-      });
+      }, { onConflict: 'user_id, session_id' });
       
     if (error) {
       console.warn("Could not save to Supabase. Table 'analyses' might not exist.", error);
@@ -212,6 +215,7 @@ export const saveResultToSupabase = async (sessionData) => {
 };
 
 export const getLatestResultFromSupabase = async () => {
+  if (!supabase) return null;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
