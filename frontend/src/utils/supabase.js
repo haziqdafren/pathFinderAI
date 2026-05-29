@@ -11,6 +11,32 @@ const realSupabase = supabaseUrl && supabaseAnonKey
 // Clean, realistic emulation layer if keys are missing
 const simulatedSupabase = {
   auth: {
+    getSession: async () => {
+      const email = localStorage.getItem('pathy_user_email') || 'guest@pathfinder.com';
+      const name = localStorage.getItem('pathy_user_name') || 'Guest';
+      const isLoggedIn = localStorage.getItem('pathy_logged_in') === 'true' || sessionStorage.getItem('logged_in') === 'true';
+      
+      if (!isLoggedIn) {
+        return { data: { session: null }, error: null };
+      }
+      
+      return {
+        data: {
+          session: {
+            user: {
+              id: 'virtual_user_777',
+              email: email,
+              user_metadata: {
+                full_name: name,
+              }
+            },
+            access_token: 'virtual_token'
+          }
+        },
+        error: null
+      };
+    },
+    
     getUser: async () => {
       const email = localStorage.getItem('pathy_user_email') || 'guest@pathfinder.com';
       const name = localStorage.getItem('pathy_user_name') || 'Guest';
@@ -67,7 +93,7 @@ const simulatedSupabase = {
       return { error: null };
     },
     
-    onAuthStateChanged: (callback) => {
+    onAuthStateChange: (callback) => {
       const email = localStorage.getItem('pathy_user_email') || 'guest@pathfinder.com';
       const isLoggedIn = localStorage.getItem('pathy_logged_in') === 'true' || sessionStorage.getItem('logged_in') === 'true';
       

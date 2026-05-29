@@ -125,21 +125,43 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     const answers = JSON.parse(sessionStorage.getItem('pathfinder_answers')) || ['', '', '', ''];
+    let analysisFinished = false;
+    let sequenceFinished = false;
     
     // Start backend process
     const runBackend = async () => {
-      const { resultPromise, sessionId } = await startAnalysis(answers, lang);
-      if (resultPromise) {
-        const data = await resultPromise;
+      try {
+        const { resultPromise, sessionId } = await startAnalysis(answers, lang);
+        if (resultPromise) {
+          const data = await resultPromise;
+          sessionStorage.setItem('pathfinder_session', JSON.stringify({
+            session_id: sessionId,
+            results: data,
+            timestamp: Date.now()
+          }));
+          localStorage.setItem('pathy_shuffles_left', '3');
+          analysisFinished = true;
+          checkAndNavigate();
+        }
+      } catch (err) {
+        console.error("Backend error:", err);
+        // Fallback session on error so results page uses local cache logic
         sessionStorage.setItem('pathfinder_session', JSON.stringify({
-          session_id: sessionId,
-          results: data,
-          timestamp: Date.now()
+          session_id: 'error_fallback',
+          results: null,
+          error: "Backend took too long or failed"
         }));
-        localStorage.setItem('pathy_shuffles_left', '3');
+        analysisFinished = true;
+        checkAndNavigate();
       }
     };
     
+    const checkAndNavigate = () => {
+      if (analysisFinished && sequenceFinished) {
+        navigate('/results');
+      }
+    };
+
     runBackend();
 
     // Fake UI animation sequence to match backend timing (~5-10 seconds mock feel)
@@ -173,7 +195,8 @@ export default function LoadingScreen() {
       clearInterval(jobInterval);
       
       await wait(900);
-      navigate('/results');
+      sequenceFinished = true;
+      checkAndNavigate();
     };
     
     sequence();

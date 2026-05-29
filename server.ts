@@ -239,6 +239,10 @@ async function startServer() {
 
   app.use(express.json());
 
+  app.get("/api/v1/health", (req, res) => {
+    res.json({ status: "ok", mode: process.env.NODE_ENV });
+  });
+
   // Load JSON data at startup
   let taxonomyMap = "";
   let templatesData = "";
@@ -346,11 +350,13 @@ async function startServer() {
         project: resultObj.project_recommendation || null,
         visual_roadmap: resultObj.visual_roadmap || null,
         jobs_analyzed: resultObj.jobs_analyzed || 25,
-        jobs_source: "Live Search",
+        jobs_source: resultObj.live_jobs ? "AI Google Search" : "Cached/Fallback Data",
+        is_live: !!resultObj.live_jobs,
+        fetched_at: new Date().toISOString(),
         live_jobs: resultObj.live_jobs || [
-          { title: "Junior Data Analyst", company: "Bukalapak", location: "Jakarta", match: 78, type: "Full-time" },
-          { title: "BI Analyst Intern", company: "Tokopedia", location: "Jakarta", match: 74, type: "Internship" },
-          { title: "Data Operations", company: "Sayurbox", location: "Bandung", match: 68, type: "Full-time" }
+          { title: "Junior Data Analyst", company: "Simulated Bukalapak", location: "Jakarta", match: 78, type: "Full-time (Sample)", is_fallback: true },
+          { title: "BI Analyst Intern", company: "Simulated Tokopedia", location: "Jakarta", match: 74, type: "Internship (Sample)", is_fallback: true },
+          { title: "Data Operations", company: "Simulated Sayurbox", location: "Bandung", match: 68, type: "Full-time (Sample)", is_fallback: true }
         ]
       });
 
@@ -721,8 +727,10 @@ async function startServer() {
           { day: 90, title: isEn ? "Publish & Deploy" : "Hasil Akhir & Deploy", task: isEn ? "Deploy your actual build to a free cloud host and link the URL to your CV." : "Deploy karya aslimu di platform cloud dan tautkan url portfolio di CV-mu." }
         ],
         jobs_analyzed: 20,
-        jobs_source: "Live Search & Taxonomy Match",
-        live_jobs: liveJobs
+        jobs_source: "Cached/Fallback Data",
+        is_live: false,
+        fetched_at: new Date().toISOString(),
+        live_jobs: liveJobs.map(j => ({ ...j, is_fallback: true, company: "Simulated " + j.company }))
       });
     }
   });

@@ -542,7 +542,19 @@ export default function ResultsScreen() {
               </span>
               <span>· {isEn ? "12s ago" : "12 detik lalu"}</span>
             </div>
-            <p className="m-0 mb-2" dangerouslySetInnerHTML={{ __html: data.scout_message ? data.scout_message.replace(/\*\*(.*?)\*\*/g, '<strong class="text-ink font-semibold bg-gradient-to-b from-transparent from-65% to-orange/20 to-65% px-0.5">$1</strong>') : '' }}></p>
+            <p className="m-0 mb-2">
+              {data.scout_message ? (
+                data.scout_message.split(/\*\*(.*?)\*\*/g).map((part, i) => 
+                  i % 2 === 1 ? (
+                    <strong key={i} className="text-ink font-semibold bg-gradient-to-b from-transparent from-65% to-orange/20 to-65% px-0.5">
+                      {part}
+                    </strong>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  )
+                )
+              ) : null}
+            </p>
             <div className="flex gap-2 flex-wrap mt-3">
               {(data.follow_up_questions || []).map((q, i) => (
                 <button key={i} onClick={() => { setInitialMessage(q); setChatOpen(true); }} className="bg-cream border border-border rounded-full py-1.5 px-[13px] text-[13px] text-ink-2 transition-all hover:bg-ink hover:text-white hover:border-ink cursor-pointer">

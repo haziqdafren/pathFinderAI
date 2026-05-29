@@ -23,8 +23,11 @@ create table analyses (
   project_recommendation jsonb,
   jobs_analyzed integer,
   job_data_snapshot jsonb,
+  live_jobs jsonb,
+  visual_roadmap jsonb,
   location text,
   timeline_months integer,
+  lang text,
   created_at timestamptz default now()
 );
 
@@ -60,3 +63,28 @@ create index idx_job_cache_expires on job_cache(expires_at);
 alter table users enable row level security;
 alter table analyses enable row level security;
 alter table milestones enable row level security;
+
+-- RLS Policies
+create policy "Users can view their own profile" on users
+  for select using (auth.uid() = id);
+
+create policy "Users can update their own profile" on users
+  for update using (auth.uid() = id);
+
+create policy "Users can view their own analyses" on analyses
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own analyses" on analyses
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own analyses" on analyses
+  for update using (auth.uid() = user_id);
+
+create policy "Users can view their own milestones" on milestones
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own milestones" on milestones
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own milestones" on milestones
+  for update using (auth.uid() = user_id);
