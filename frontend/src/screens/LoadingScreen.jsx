@@ -148,7 +148,43 @@ export default function LoadingScreen() {
         // Fallback session on error so results page uses local cache logic
         sessionStorage.setItem('pathfinder_session', JSON.stringify({
           session_id: 'error_fallback',
-          results: null,
+          results: {
+            user_name: localStorage.getItem('pathy_user_name') || "Teman",
+            readiness_score: 55,
+            top_roles: [
+              { rank: 1, role_name: "Web Developer", role_id: "web_dev", fit_score: 75, skills_shown: ["HTML", "CSS"], job_count: 5 },
+            ],
+            signal_chips: ["Mempelajari hal baru", "Belum ada portfolio khusus"],
+            skill_gaps: [
+              { skill: "React.js / Frontend Framework", count: 12, total: 20 },
+              { skill: "Backend Integration", count: 8, total: 20 }
+            ],
+            scout_message: `Waktu analisis dari AI sedang tinggi atau tidak tersedia. PathFinder menampilkan simulasi data jatuh-kembali (fallback) ini agar kamu bisa melihat contoh laporan. Coba ulang lagi nanti dengan API Key aktif.`,
+            project: {
+              name: "Customer Interactive Web Dashboard",
+              dataset_name: "Product Catalog Dataset",
+              duration_weeks: 2,
+              skills_closed: ["Async API Fetching", "Dynamic Filtering", "State Management (React)"],
+              tech_stack: ["Vite React", "Tailwind CSS"],
+              week_1: "Week 1: Membuat rancangan layout interaktif responsif pada semua ukuran layar.",
+              week_2: "Week 2: Tambahkan fetch data dari dummy API serta pasang fungsionalitas visual filter."
+            },
+            visual_roadmap: [
+              { day: 7, title: "Foundation", task: "Setup repository & React basic routing." },
+              { day: 30, title: "Milestone 1", task: "Build the visual components layout." },
+              { day: 60, title: "Milestone 2", task: "Integrate APIs and dummy data." },
+              { day: 90, title: "Deploy", task: "Deploy the app to vercel and share." }
+            ],
+            jobs_analyzed: 20,
+            jobs_source: "Local fallback",
+            is_live: false,
+            fetched_at: new Date().toISOString(),
+            live_jobs: [
+              { title: "Frontend Web Developer", company: "Simulated Bukalapak", location: "Jakarta", match: 75, type: "Full-time (Sample)", is_fallback: true },
+              { title: "React Developer Intern", company: "Simulated Tokopedia", location: "Jakarta", match: 70, type: "Internship (Sample)", is_fallback: true },
+              { title: "Web Developer", company: "Simulated Sayurbox", location: "Bandung", match: 65, type: "Full-time (Sample)", is_fallback: true }
+            ]
+          },
           error: "Backend took too long or failed"
         }));
         analysisFinished = true;

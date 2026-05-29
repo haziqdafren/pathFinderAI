@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PathyChatDrawer from '../components/PathyChatDrawer';
-import GmailShareModal from '../components/GmailShareModal';
-import JobsListDrawer from '../components/JobsListDrawer';
+
+const PathyChatDrawer = lazy(() => import('../components/PathyChatDrawer'));
+const GmailShareModal = lazy(() => import('../components/GmailShareModal'));
+const JobsListDrawer = lazy(() => import('../components/JobsListDrawer'));
 
 const ALTERNATIVE_PROJECTS = {
   data: [
@@ -632,9 +633,15 @@ export default function ResultsScreen() {
 
           <article id="jobs" className="col-span-1 md:col-span-3 bg-ink text-white border-0 rounded-[14px] p-[22px] flex flex-col justify-between min-h-[220px] relative overflow-hidden">
             <div>
-              <div className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] uppercase bg-orange/20 text-orange-2 border border-orange/30 py-[3px] px-2 rounded-full mb-2 self-start before:content-[''] before:w-[5px] before:h-[5px] before:bg-orange before:rounded-full before:animate-[pulse_1.4s_ease-in-out_infinite]">
-                live multi-portal via JobSpy Engine
-              </div>
+              {data.is_live !== false ? (
+                <div className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] uppercase bg-orange/20 text-orange-2 border border-orange/30 py-[3px] px-2 rounded-full mb-2 self-start before:content-[''] before:w-[5px] before:h-[5px] before:bg-orange before:rounded-full before:animate-[pulse_1.4s_ease-in-out_infinite]">
+                  live multi-portal via JobSpy Engine
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] uppercase bg-white/10 text-white/70 border border-white/20 py-[3px] px-2 rounded-full mb-2 self-start before:content-[''] before:w-[5px] before:h-[5px] before:bg-white/70 before:rounded-full">
+                  {isEn ? "sample fallback data" : "data contoh fallback"}
+                </div>
+              )}
               <div className="font-mono text-[10px] text-white/55 tracking-[0.14em] uppercase mb-3.5 flex items-center gap-2">
                 <span className="inline-flex items-center justify-center text-orange w-3.5 h-3.5">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>
@@ -644,10 +651,18 @@ export default function ResultsScreen() {
             </div>
             <h2 className="text-[clamp(80px,9vw,132px)] leading-[0.85] font-medium tracking-[-0.045em] m-0">{data.jobs_analyzed || 20}</h2>
             <div className="text-[13px] text-white/60 leading-[1.5] tracking-[-0.005em]">
-              {isEn ? (
-                "Aggregated in real-time utilizing the JobSpy Scraper Engine to bundle listing feeds from Indeed, LinkedIn, and Glints for absolute confidence. No assumptions."
+              {data.is_live !== false ? (
+                isEn ? (
+                  "Aggregated in real-time utilizing the JobSpy Scraper Engine to bundle listing feeds from Indeed, LinkedIn, and Glints for absolute confidence. No assumptions."
+                ) : (
+                  "Diagregasi real-time terintegrasi lewat JobSpy Scraper Engine mengumpulkan info teranyar dari Indeed ID, LinkedIn, Glints, dan papan lowongan kerja terpopuler untuk akurasi penuh. Bukan estimasi."
+                )
               ) : (
-                "Diagregasi real-time terintegrasi lewat JobSpy Scraper Engine mengumpulkan info teranyar dari Indeed ID, LinkedIn, Glints, dan papan lowongan kerja terpopuler untuk akurasi penuh. Bukan estimasi."
+                isEn ? (
+                  "AI/search provider is unavailable, so PathFinder is showing simulated fallback data for guidance. Re-run with API keys enabled for live listings."
+                ) : (
+                  "AI/search provider tidak tersedia, maka PathFinder menampilkan simulasi data contoh. Ulangi dengan melampirkan API key untuk mendapat data asli."
+                )
               )}
             </div>
           </article>
@@ -661,12 +676,19 @@ export default function ResultsScreen() {
             </div>
             <div className="flex flex-col gap-[18px] flex-1">
               {(data.skill_gaps || []).map((sg, i) => {
-                const percentage = Math.round((sg.count / sg.total) * 100);
+                const percentage =
+                  typeof sg.pct === "number"
+                    ? sg.pct
+                    : sg.count && sg.total
+                      ? Math.round((sg.count / sg.total) * 100)
+                      : 0;
                 return (
                   <div key={i}>
                     <div className="flex justify-between mb-1.5 items-baseline">
                       <span className="text-[14px] font-medium tracking-[-0.005em]">{sg.skill}</span>
-                      <span className="font-mono text-[13px] text-ink font-medium">{sg.count} / {sg.total}</span>
+                      <span className="font-mono text-[13px] text-ink font-medium">
+                        {sg.count != null && sg.total != null ? `${sg.count} / ${sg.total}` : `${percentage}%`}
+                      </span>
                     </div>
                     <div className="relative h-1.5 bg-cream-2 rounded-full overflow-hidden">
                       <span className="absolute inset-y-0 left-0 bg-orange rounded-full" style={{ width: `${percentage}%` }}></span>
@@ -790,8 +812,11 @@ export default function ResultsScreen() {
             <article className="col-span-1 md:col-span-12 bg-transparent p-0 mt-3 relative z-10">
               <div className="flex items-center justify-between mb-4 px-1">
                 <div className="font-mono text-[10px] text-ink-2 tracking-[0.14em] uppercase flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-orange rounded-full animate-pulse"></span>
-                  {isEn ? `Live active ${topRoleName} openings today` : `Lowongan ${topRoleName} live hari ini`}
+                  <span className={`w-1.5 h-1.5 ${data.is_live !== false ? 'bg-orange animate-pulse' : 'bg-muted-dark'} rounded-full`}></span>
+                  {data.is_live !== false 
+                    ? (isEn ? `Live active ${topRoleName} openings today` : `Lowongan ${topRoleName} live hari ini`)
+                    : (isEn ? `Sample matching openings for ${topRoleName}` : `Contoh lowongan cocok untuk ${topRoleName}`)
+                  }
                 </div>
                 <button 
                   onClick={() => setShowJobsExplorer(true)}
@@ -859,8 +884,8 @@ export default function ResultsScreen() {
                           <span className="bg-orange/10 text-orange-2 border border-orange/20 px-2 py-0.5 rounded-[6px] font-mono text-[9px] tracking-[0.06em] uppercase font-semibold">
                             {job.match}% match
                           </span>
-                          <span className={`text-[8.5px] font-mono font-medium px-1.5 py-0.5 rounded-[4px] shrink-0 ${isGoogleSource ? 'text-blue-600 bg-blue-50 border border-blue-100' : 'text-indigo-600 bg-indigo-50 border border-indigo-100'}`}>
-                            {isGoogleSource ? 'Google Search' : 'Indeed ID'}
+                          <span className={`text-[8.5px] font-mono font-medium px-1.5 py-0.5 rounded-[4px] shrink-0 ${job.is_fallback ? 'text-slate-600 bg-slate-100 border border-slate-200' : (isGoogleSource ? 'text-blue-600 bg-blue-50 border border-blue-100' : 'text-indigo-600 bg-indigo-50 border border-indigo-100')}`}>
+                            {job.is_fallback ? (isEn ? 'Sample' : 'Fallback') : (isGoogleSource ? 'Google Search' : 'Indeed ID')}
                           </span>
                         </div>
                       </div>
@@ -890,14 +915,16 @@ export default function ResultsScreen() {
         </span>
       </button>
 
-      <GmailShareModal isOpen={showGmailShare} onClose={() => setShowGmailShare(false)} sessionData={data} />
-      <PathyChatDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} initialMessage={initialMessage} sessionData={data} setSessionData={setData} />
-      <JobsListDrawer 
-        isOpen={showJobsExplorer} 
-        onClose={() => setShowJobsExplorer(false)} 
-        roleName={topRoleName} 
-        locationInput={data.location || (sessionStorage.getItem('pathfinder_answers') ? JSON.parse(sessionStorage.getItem('pathfinder_answers'))?.[3] : 'Jakarta')}
-      />
+      <Suspense fallback={null}>
+        <GmailShareModal isOpen={showGmailShare} onClose={() => setShowGmailShare(false)} sessionData={data} />
+        <PathyChatDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} initialMessage={initialMessage} sessionData={data} setSessionData={setData} />
+        <JobsListDrawer 
+          isOpen={showJobsExplorer} 
+          onClose={() => setShowJobsExplorer(false)} 
+          roleName={topRoleName} 
+          locationInput={data.location || (sessionStorage.getItem('pathfinder_answers') ? JSON.parse(sessionStorage.getItem('pathfinder_answers'))?.[3] : 'Jakarta')}
+        />
+      </Suspense>
 
       {settingsOpen && (
         <>

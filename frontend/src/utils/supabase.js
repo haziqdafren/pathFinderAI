@@ -185,6 +185,17 @@ export const saveResultToSupabase = async (sessionData) => {
         scout_message: sessionData.scout_message,
         project_recommendation: sessionData.project_recommendation || sessionData.project || {},
         jobs_analyzed: sessionData.jobs_analyzed || 20,
+        live_jobs: sessionData.live_jobs || [],
+        visual_roadmap: sessionData.visual_roadmap || [],
+        jobs_source: sessionData.jobs_source || null,
+        is_live: Boolean(sessionData.is_live),
+        fetched_at: sessionData.fetched_at || new Date().toISOString(),
+        job_data_snapshot: {
+          jobs_source: sessionData.jobs_source || null,
+          is_live: Boolean(sessionData.is_live),
+          fetched_at: sessionData.fetched_at || null,
+          fallback_used: sessionData.is_live === false
+        },
         location: sessionData.location || 'Indonesia',
         lang: currentLang,
       });
