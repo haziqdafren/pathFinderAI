@@ -75,17 +75,20 @@ export default function LoginScreen() {
     try {
       setIsLoadingGoogle(true);
       const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const isPreviewUrl = window.location.hostname.includes('run.app') || window.location.hostname.includes('googleusercontent');
       
-      if (isSimulated) {
-        // Fast direct path for virtual sandbox
+      if (isSimulated || isPreviewUrl) {
+        // Fast direct path for virtual sandbox or preview environments lacking valid redirect configs
         sessionStorage.setItem('logged_in', 'true');
         localStorage.setItem('pathy_logged_in', 'true');
         localStorage.setItem('pathy_user_name', 'Guest');
         localStorage.setItem('pathy_user_email', 'guest@pathfinder.com');
         localStorage.setItem('pathy_shuffles_left', '3');
-        toast.success(isEn ? "Successfully signed in with Google (Virtual Sandbox)!" : "Berhasil masuk dengan akun Google (Virtual Sandbox)!");
+        toast.success(isEn ? "Successfully signed in with Google (Preview Bypass)!" : "Berhasil masuk dengan akun Google (Bypass Preview)!");
         setIsLoadingGoogle(false);
-        navigate('/results');
+        setTimeout(() => {
+          navigate('/results');
+        }, 600);
         return;
       }
 
@@ -136,8 +139,9 @@ export default function LoginScreen() {
     try {
       setIsLoadingMagic(true);
       const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const isPreviewUrl = window.location.hostname.includes('run.app') || window.location.hostname.includes('googleusercontent');
       
-      if (isSimulated) {
+      if (isSimulated || isPreviewUrl) {
         // Fast direct login for virtual magic link
         sessionStorage.setItem('logged_in', 'true');
         localStorage.setItem('pathy_logged_in', 'true');
@@ -146,7 +150,7 @@ export default function LoginScreen() {
         localStorage.setItem('pathy_user_name', namePart.charAt(0).toUpperCase() + namePart.slice(1));
         localStorage.setItem('pathy_shuffles_left', '3');
         
-        toast.success(isEn ? `Magic link sent & activated automatically for ${email}!` : `Magic link dikirim & diaktifkan otomatis untuk ${email}!`);
+        toast.success(isEn ? `Preview Bypass: Logged in automatically as ${email}!` : `Bypass Preview: Otomatis masuk sebagai ${email}!`);
         setTimeout(() => {
           navigate('/results');
         }, 800);

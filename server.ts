@@ -128,56 +128,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
       console.log("[AI Routing] GROQ_API_KEY is not defined.");
     }
 
-    // 3. Third choice: OpenAI API Fallback
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
-      console.log("[AI Routing] OPENAI_API_KEY found, initiating OpenAI fallback routing...");
-      try {
-        const payload: any = {
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "user", content: augmentedPrompt }
-          ],
-          temperature: 0.15,
-          max_tokens: 1500
-        };
-        if (isJson) {
-          payload.response_format = { type: "json_object" };
-        }
-
-        const openaiResponse = await withTimeout(
-          fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${openaiKey}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          }),
-          5000,
-          "OpenAI fetch timed out after 5 seconds"
-        );
-
-        if (!openaiResponse.ok) {
-          const errText = await openaiResponse.text();
-          throw new Error(`OpenAI HTTP ${openaiResponse.status}: ${errText}`);
-        }
-
-        const resBody = await openaiResponse.json() as any;
-        const textContent = resBody?.choices?.[0]?.message?.content;
-        if (textContent) {
-          console.log("[AI Routing] OpenAI carrier completed successfully under GPT-4o-mini.");
-          return { text: textContent, source: "OpenAI GPT-4o-mini" };
-        }
-        throw new Error("OpenAI parsed JSON with missing choice output contents");
-      } catch (oaError: any) {
-        console.error("[AI Routing] OpenAI backup routing error:", oaError?.message || oaError);
-      }
-    } else {
-      console.log("[AI Routing] OPENAI_API_KEY is not defined.");
-    }
-
-    // 4. Fourth choice: OpenRouter API Fallback
+    // 3. Third choice: OpenRouter API Fallback
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     if (openrouterKey) {
       console.log("[AI Routing] OPENROUTER_API_KEY found, initiating OpenRouter fallback routing...");
@@ -228,7 +179,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
       console.log("[AI Routing] OPENROUTER_API_KEY is not defined.");
     }
 
-    throw new Error("All active AI options (Gemini, Groq, OpenAI, OpenRouter) are currently unavailable or exhausted.");
+    throw new Error("All active AI options (Gemini, Groq, OpenRouter) are currently unavailable or exhausted.");
   }
 }
 
@@ -780,6 +731,18 @@ IMPORTANT: Your response must be ONLY valid JSON matching this schema exactly. N
       appType: "spa",
     });
     app.use(vite.middlewares);
+    
+    // Add SPA fallback for Express in development
+    app.get('*', async (req, res, next) => {
+      try {
+        let template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(req.originalUrl, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     // Production serving
     const distPath = path.join(process.cwd(), 'dist');
