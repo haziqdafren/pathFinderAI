@@ -225,8 +225,8 @@ export default function LoadingScreen() {
               duration_weeks: 2,
               skills_closed: ["Async API Fetching", "Dynamic Filtering", "State Management (React)"],
               tech_stack: ["Vite React", "Tailwind CSS"],
-              week_1: "Week 1: Membuat rancangan layout interaktif responsif pada semua ukuran layar.",
-              week_2: "Week 2: Tambahkan fetch data dari dummy API serta pasang fungsionalitas visual filter."
+              week_1: isEn ? "Week 1: Build a responsive interactive layout across all screen sizes." : "Week 1: Membuat rancangan layout interaktif responsif pada semua ukuran layar.",
+              week_2: isEn ? "Week 2: Add dummy API data fetching and visual filter functionality." : "Week 2: Tambahkan fetch data dari dummy API serta pasang fungsionalitas visual filter."
             },
             jobs: [
               { title: "Frontend Web Developer", company: "Bukalapak", location: "Jakarta", match: 75, type: "Full-time (Search Example)", is_fallback: true },
@@ -245,9 +245,9 @@ export default function LoadingScreen() {
             top_roles: [
               { rank: 1, role_name: fallback.role, role_id: fallback.role_id, fit_score: 75, skills_shown: fallback.skills, job_count: 5 },
             ],
-            signal_chips: ["Mempelajari hal baru", "Belum ada portfolio khusus"],
+            signal_chips: isEn ? ["learning new things", "no portfolio yet"] : ["Mempelajari hal baru", "Belum ada portfolio khusus"],
             skill_gaps: fallback.gaps.map((skill, idx) => ({ skill, count: idx === 0 ? 12 : 8, total: 20 })),
-            scout_message: `Waktu analisis dari AI sedang tinggi atau tidak tersedia. PathFinder menampilkan simulasi data jatuh-kembali (fallback) ini agar kamu bisa melihat contoh laporan. Coba ulang lagi nanti dengan API Key aktif.`,
+            scout_message: isEn ? `AI analysis time is high or unavailable. PathFinder is showing this fallback simulation so you can preview a sample report. Try again later with an active API key.` : `Waktu analisis dari AI sedang tinggi atau tidak tersedia. PathFinder menampilkan simulasi data jatuh-kembali (fallback) ini agar kamu bisa melihat contoh laporan. Coba ulang lagi nanti dengan API Key aktif.`,
             project: fallback.project,
             visual_roadmap: [
               { day: 7, title: "Foundation", task: "Setup repository & React basic routing." },

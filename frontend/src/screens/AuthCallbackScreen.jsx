@@ -66,24 +66,33 @@ export default function AuthCallbackScreen() {
     };
   }, []);
 
+  const lang = localStorage.getItem('pref_lang') || 'id';
+  const isEn = lang === 'en';
+
   return (
     <div className="min-h-screen bg-cream flex flex-col justify-center items-center p-6 text-center">
       {!errorStatus ? (
         <>
           <div className="w-12 h-12 border-4 border-orange/20 border-t-orange rounded-full animate-spin mb-4"></div>
-          <h1 className="font-sans text-xl font-medium text-ink tracking-tight mb-2">Menyelesaikan Autentikasi</h1>
+          <h1 className="font-sans text-xl font-medium text-ink tracking-tight mb-2">
+            {isEn ? "Completing Authentication" : "Menyelesaikan Autentikasi"}
+          </h1>
           <p className="font-sans text-[14px] text-muted-dark leading-relaxed max-w-[320px]">
-            Mohon tunggu sebentar, PathFinder sedang mengkonfirmasi akun kamu.
+            {isEn ? "Please wait, PathFinder is confirming your account." : "Mohon tunggu sebentar, PathFinder sedang mengkonfirmasi akun kamu."}
           </p>
         </>
       ) : (
         <>
           <div className="w-12 h-12 flex items-center justify-center text-4xl mb-4">⚠️</div>
-          <h1 className="font-sans text-xl font-medium text-ink tracking-tight mb-2">Autentikasi Gagal atau Kadaluarsa</h1>
+          <h1 className="font-sans text-xl font-medium text-ink tracking-tight mb-2">
+            {isEn ? "Authentication Failed or Expired" : "Autentikasi Gagal atau Kadaluarsa"}
+          </h1>
           <p className="font-sans text-[14px] text-muted-dark leading-relaxed max-w-[320px] mb-4">
-            Link magic sudah tidak valid atau sesi gagal dibuat. Silakan coba login kembali.
+            {isEn ? "The magic link is no longer valid or the session failed to create. Please try logging in again." : "Link magic sudah tidak valid atau sesi gagal dibuat. Silakan coba login kembali."}
           </p>
-          <a href="/" className="bg-ink text-white px-4 py-2 rounded-xl text-[14px]">Kembali ke Beranda</a>
+          <a href="/" className="bg-ink text-white px-4 py-2 rounded-xl text-[14px]">
+            {isEn ? "Back to Home" : "Kembali ke Beranda"}
+          </a>
         </>
       )}
     </div>
