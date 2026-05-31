@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", "system-ui", "sans-serif";
+  --font-mono: "Geist Mono", "monospace";
+  
+  --color-ink: #111110;
+  --color-ink-2: #1c1c1a;
+  --color-ink-3: #2a2a27;
+  --color-orange: #E8642A;
+  --color-orange-2: #ff7838;
+  --color-orange-soft: #FCE6D8;
+  --color-cream: #F4F2EE;
+  --color-cream-2: #ECE9E2;
+  --color-card: #FFFFFF;
+  --color-border: #E6E2D9;
+  --color-border-dark: #2c2c29;
+  --color-muted: #8a857a;
+  --color-muted-dark: #6a665d;
+  --color-success: #2F7D5F;
+}
+
+@layer base {
+  body {
+    @apply bg-[#0a0a09] text-ink font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+

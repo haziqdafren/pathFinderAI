@@ -1,0 +1,575 @@
+{
+  "version": "1.0",
+  "description": "PathFinder AI - Role Taxonomy Matrix for Indonesian IT Job Market",
+  "clusters": ["data", "dev", "ml", "infra", "qa"],
+  "roles": [
+
+    {
+      "role_id": "data_analyst",
+      "role_name": "Data Analyst",
+      "role_name_id": "Analis Data",
+      "cluster": "data",
+      "description": "Menganalisis data bisnis, membuat laporan dan dashboard, memberikan insight kepada stakeholder non-teknis.",
+      "primary_skills": ["SQL", "Excel", "Tableau", "Power BI", "Python", "Data Visualization", "Statistics"],
+      "secondary_skills": ["Looker Studio", "Google Sheets", "dbt", "BigQuery", "Pandas", "Business Intelligence"],
+      "signal_keywords": [
+        "dashboard", "laporan", "report", "analisis data", "excel", "data bisnis",
+        "insight", "visualisasi", "grafik", "chart", "pivot", "stakeholder",
+        "suka angka", "mengolah data", "presentasi data", "business decision",
+        "data penjualan", "data keuangan", "analisa", "interpret"
+      ],
+      "anti_signals": [
+        "tidak suka presentasi", "tidak mau ketemu orang", "lebih suka coding murni",
+        "mau bikin model ml", "deep learning", "server", "infrastruktur"
+      ],
+      "indonesia_job_titles": ["Data Analyst", "Business Analyst - Data", "Analis Data", "Reporting Analyst"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "5000000-9000000",
+      "avg_salary_idr_mid": "9000000-18000000",
+      "demand_level": "very_high"
+    },
+
+    {
+      "role_id": "business_analyst",
+      "role_name": "Business Analyst",
+      "role_name_id": "Business Analyst",
+      "cluster": "data",
+      "description": "Menjembatani kebutuhan bisnis dengan solusi teknologi. Analisis proses bisnis, requirement gathering, dokumentasi.",
+      "primary_skills": ["Requirements Analysis", "Business Process", "SQL", "Excel", "BPMN", "User Stories", "Stakeholder Management"],
+      "secondary_skills": ["JIRA", "Confluence", "Figma", "Data Analysis", "Power BI", "Agile", "Scrum"],
+      "signal_keywords": [
+        "proses bisnis", "kebutuhan", "requirement", "jembatan", "komunikasi",
+        "dokumentasi", "flowchart", "suka ngobrol", "suka paham masalah",
+        "bisnis dan teknologi", "solusi", "user story", "meeting", "diskusi",
+        "memahami kebutuhan", "coordinate", "koordinasi"
+      ],
+      "anti_signals": [
+        "tidak suka meeting", "tidak suka presentasi", "murni coding", "server",
+        "machine learning", "deep learning", "data science"
+      ],
+      "indonesia_job_titles": ["Business Analyst", "Systems Analyst", "Functional Analyst", "IT Business Analyst"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "5000000-9000000",
+      "avg_salary_idr_mid": "9000000-20000000",
+      "demand_level": "high"
+    },
+
+    {
+      "role_id": "bi_analyst",
+      "role_name": "Business Intelligence Analyst",
+      "role_name_id": "Analis Business Intelligence",
+      "cluster": "data",
+      "description": "Membangun dan mengelola sistem BI, membuat dashboard enterprise, mengoptimalkan data warehouse untuk kebutuhan pelaporan bisnis.",
+      "primary_skills": ["SQL", "Tableau", "Power BI", "Looker", "Data Warehouse", "ETL", "Business Intelligence"],
+      "secondary_skills": ["BigQuery", "Snowflake", "dbt", "Python", "Excel", "OLAP", "Data Modeling"],
+      "signal_keywords": [
+        "dashboard", "business intelligence", "BI", "data warehouse", "reporting",
+        "laporan manajemen", "KPI", "metrics", "executive dashboard", "data pipeline",
+        "visualisasi data", "data-driven", "analisis bisnis"
+      ],
+      "anti_signals": [
+        "machine learning", "model AI", "coding backend", "server", "mobile",
+        "tidak suka dengan angka", "tidak mau kerja dengan data"
+      ],
+      "indonesia_job_titles": ["BI Analyst", "BI Developer", "Data BI Analyst", "Reporting Analyst"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "6000000-10000000",
+      "avg_salary_idr_mid": "10000000-20000000",
+      "demand_level": "high"
+    },
+
+    {
+      "role_id": "data_engineer",
+      "role_name": "Data Engineer",
+      "role_name_id": "Data Engineer",
+      "cluster": "data",
+      "description": "Membangun dan mengelola pipeline data, data warehouse, dan infrastruktur data skala besar.",
+      "primary_skills": ["Python", "SQL", "Apache Spark", "Airflow", "dbt", "BigQuery", "Data Pipeline", "ETL"],
+      "secondary_skills": ["Kafka", "AWS", "GCP", "Docker", "Hadoop", "Scala", "Snowflake", "PostgreSQL"],
+      "signal_keywords": [
+        "pipeline", "data pipeline", "warehouse", "ETL", "ELT", "batch processing",
+        "streaming data", "big data", "data infrastructure", "suka coding dan data",
+        "otomatisasi data", "integrasi data", "database besar", "data flow"
+      ],
+      "anti_signals": [
+        "tidak suka coding", "lebih suka analisis saja", "tidak mau handle server",
+        "machine learning", "model AI", "frontend", "mobile", "UI"
+      ],
+      "indonesia_job_titles": ["Data Engineer", "ETL Developer", "Data Infrastructure Engineer", "Big Data Engineer"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "7000000-12000000",
+      "avg_salary_idr_mid": "12000000-25000000",
+      "demand_level": "high"
+    },
+
+    {
+      "role_id": "analytics_engineer",
+      "role_name": "Analytics Engineer",
+      "role_name_id": "Analytics Engineer",
+      "cluster": "data",
+      "description": "Jembatan antara Data Engineer dan Data Analyst. Membangun data models yang bersih dan reliable untuk konsumsi analytics.",
+      "primary_skills": ["SQL", "dbt", "Python", "Data Modeling", "BigQuery", "Snowflake", "Git"],
+      "secondary_skills": ["Looker", "Tableau", "Airflow", "Spark", "Data Quality", "Testing"],
+      "signal_keywords": [
+        "data transformation", "data modeling", "SQL tingkat lanjut", "dbt",
+        "suka coding dan analisis", "data quality", "data reliability",
+        "transform data", "clean data", "data layer", "bisa coding dan data"
+      ],
+      "anti_signals": [
+        "tidak suka coding", "hanya visualisasi", "machine learning", "frontend", "mobile"
+      ],
+      "indonesia_job_titles": ["Analytics Engineer", "Data Modeler", "BI Engineer"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "8000000-14000000",
+      "avg_salary_idr_mid": "14000000-28000000",
+      "demand_level": "medium_growing"
+    },
+
+    {
+      "role_id": "backend_developer",
+      "role_name": "Backend Developer",
+      "role_name_id": "Backend Developer",
+      "cluster": "dev",
+      "description": "Membangun server-side logic, API, database, dan sistem yang mentenagai aplikasi.",
+      "primary_skills": ["Python", "Java", "Node.js", "SQL", "REST API", "PostgreSQL", "Git", "Docker"],
+      "secondary_skills": ["FastAPI", "Django", "Spring Boot", "Redis", "MongoDB", "Microservices", "AWS", "GCP"],
+      "signal_keywords": [
+        "backend", "API", "server", "database", "logic bisnis", "suka coding",
+        "bikin sistem", "REST", "endpoint", "tidak mau lihat UI", "tidak perlu tampilan",
+        "framework", "python backend", "node", "java", "spring", "laravel"
+      ],
+      "anti_signals": [
+        "suka desain UI", "mau bikin tampilan bagus", "tidak suka coding murni",
+        "data science", "machine learning", "data analysis", "network"
+      ],
+      "indonesia_job_titles": ["Backend Developer", "Backend Engineer", "Software Engineer - Backend", "API Developer"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "6000000-11000000",
+      "avg_salary_idr_mid": "11000000-22000000",
+      "demand_level": "very_high"
+    },
+
+    {
+      "role_id": "frontend_developer",
+      "role_name": "Frontend Developer",
+      "role_name_id": "Frontend Developer",
+      "cluster": "dev",
+      "description": "Membangun antarmuka pengguna yang interaktif dan responsif menggunakan teknologi web modern.",
+      "primary_skills": ["JavaScript", "React.js", "HTML", "CSS", "TypeScript", "Git", "Responsive Design"],
+      "secondary_skills": ["Vue.js", "Next.js", "Tailwind CSS", "Redux", "REST API", "Figma", "Angular"],
+      "signal_keywords": [
+        "frontend", "tampilan", "UI", "website", "React", "JavaScript",
+        "suka desain dan coding", "user interface", "web design", "CSS", "HTML",
+        "bikin website", "tampilan bagus", "interaktif", "animasi", "user experience"
+      ],
+      "anti_signals": [
+        "tidak suka desain", "hanya backend", "tidak peduli tampilan",
+        "data science", "machine learning", "server", "infrastruktur"
+      ],
+      "indonesia_job_titles": ["Frontend Developer", "Frontend Engineer", "Web Developer", "UI Developer"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "5000000-10000000",
+      "avg_salary_idr_mid": "10000000-20000000",
+      "demand_level": "very_high"
+    },
+
+    {
+      "role_id": "fullstack_developer",
+      "role_name": "Full Stack Developer",
+      "role_name_id": "Full Stack Developer",
+      "cluster": "dev",
+      "description": "Mampu mengerjakan frontend dan backend sekaligus. Membangun aplikasi web end-to-end.",
+      "primary_skills": ["JavaScript", "React.js", "Node.js", "SQL", "REST API", "Git", "HTML", "CSS"],
+      "secondary_skills": ["TypeScript", "Next.js", "Python", "PostgreSQL", "Docker", "AWS", "MongoDB"],
+      "signal_keywords": [
+        "full stack", "frontend dan backend", "end-to-end", "bikin aplikasi lengkap",
+        "web app", "bisa semua bagian", "full project sendiri", "freelance web",
+        "bikin website dari awal", "database sampai tampilan", "Laravel", "React"
+      ],
+      "anti_signals": [
+        "hanya data", "machine learning saja", "tidak suka coding", "network", "server ops"
+      ],
+      "indonesia_job_titles": ["Full Stack Developer", "Web Developer", "Software Engineer", "Full Stack Engineer"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "6000000-11000000",
+      "avg_salary_idr_mid": "11000000-22000000",
+      "demand_level": "very_high"
+    },
+
+    {
+      "role_id": "mobile_developer",
+      "role_name": "Mobile Developer",
+      "role_name_id": "Mobile Developer",
+      "cluster": "dev",
+      "description": "Membangun aplikasi mobile untuk Android dan/atau iOS.",
+      "primary_skills": ["Android (Kotlin/Java)", "iOS (Swift)", "Flutter", "React Native", "Git", "REST API"],
+      "secondary_skills": ["Firebase", "SQLite", "Room Database", "Jetpack Compose", "SwiftUI", "Dart"],
+      "signal_keywords": [
+        "mobile", "android", "iOS", "aplikasi mobile", "flutter", "kotlin",
+        "swift", "app store", "play store", "bikin app", "aplikasi HP",
+        "android studio", "react native", "mobile development"
+      ],
+      "anti_signals": [
+        "tidak mau coding", "hanya web", "data science", "machine learning",
+        "tidak mau belajar baru", "server", "infrastruktur"
+      ],
+      "indonesia_job_titles": ["Mobile Developer", "Android Developer", "iOS Developer", "Flutter Developer"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "6000000-11000000",
+      "avg_salary_idr_mid": "11000000-22000000",
+      "demand_level": "high"
+    },
+
+    {
+      "role_id": "software_engineer",
+      "role_name": "Software Engineer",
+      "role_name_id": "Software Engineer",
+      "cluster": "dev",
+      "description": "Merancang, membangun, dan memelihara sistem perangkat lunak skala menengah hingga besar.",
+      "primary_skills": ["Python", "Java", "JavaScript", "SQL", "OOP", "Data Structures", "Git", "Algorithms"],
+      "secondary_skills": ["System Design", "Docker", "Microservices", "Cloud", "Testing", "CI/CD"],
+      "signal_keywords": [
+        "software engineer", "software development", "sistem", "coding",
+        "algoritma", "struktur data", "OOP", "design pattern", "suka problem solving",
+        "engineering", "bikin sistem besar", "scalable", "architecture"
+      ],
+      "anti_signals": [
+        "tidak suka coding", "hanya data", "machine learning saja", "data analyst"
+      ],
+      "indonesia_job_titles": ["Software Engineer", "Software Developer", "Programmer", "Application Developer"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "6000000-12000000",
+      "avg_salary_idr_mid": "12000000-25000000",
+      "demand_level": "very_high"
+    },
+
+    {
+      "role_id": "ml_engineer",
+      "role_name": "Machine Learning Engineer",
+      "role_name_id": "Machine Learning Engineer",
+      "cluster": "ml",
+      "description": "Membangun, deploy, dan maintain sistem machine learning di production. Fokus pada engineering ML, bukan hanya research.",
+      "primary_skills": ["Python", "Machine Learning", "TensorFlow", "PyTorch", "scikit-learn", "SQL", "Docker", "MLOps"],
+      "secondary_skills": ["FastAPI", "Kubernetes", "AWS SageMaker", "MLflow", "Feature Engineering", "Model Deployment"],
+      "signal_keywords": [
+        "machine learning", "ML", "model", "training", "neural network",
+        "bikin model", "deploy model", "scikit-learn", "tensorflow", "pytorch",
+        "suka ML dan coding", "production ML", "model training", "feature engineering"
+      ],
+      "anti_signals": [
+        "tidak suka matematika", "tidak mau coding", "hanya analisis",
+        "frontend", "mobile", "UI design", "tidak suka research"
+      ],
+      "indonesia_job_titles": ["Machine Learning Engineer", "ML Engineer", "AI Engineer - ML", "MLOps Engineer"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "8000000-15000000",
+      "avg_salary_idr_mid": "15000000-30000000",
+      "demand_level": "medium_growing"
+    },
+
+    {
+      "role_id": "data_scientist",
+      "role_name": "Data Scientist",
+      "role_name_id": "Data Scientist",
+      "cluster": "ml",
+      "description": "Menggabungkan statistik, machine learning, dan domain knowledge untuk menghasilkan insight bisnis yang complex.",
+      "primary_skills": ["Python", "Statistics", "Machine Learning", "SQL", "R", "scikit-learn", "Data Analysis", "Pandas"],
+      "secondary_skills": ["Deep Learning", "NLP", "Computer Vision", "A/B Testing", "Experimentation", "Visualization"],
+      "signal_keywords": [
+        "data science", "statistik", "machine learning", "penelitian data",
+        "suka matematika dan data", "eksperimen", "hypothesis testing", "model prediksi",
+        "insight dari data", "analisis mendalam", "riset", "research"
+      ],
+      "anti_signals": [
+        "tidak suka matematika", "tidak mau research", "hanya visualisasi",
+        "frontend", "mobile", "tidak mau coding"
+      ],
+      "indonesia_job_titles": ["Data Scientist", "Research Scientist", "Applied Scientist", "Data Science Analyst"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "8000000-15000000",
+      "avg_salary_idr_mid": "15000000-30000000",
+      "demand_level": "medium_growing"
+    },
+
+    {
+      "role_id": "ai_engineer",
+      "role_name": "AI Engineer",
+      "role_name_id": "AI Engineer",
+      "cluster": "ml",
+      "description": "Membangun aplikasi dan sistem berbasis AI, mengintegrasikan LLM dan model AI ke dalam produk.",
+      "primary_skills": ["Python", "LLM API", "Prompt Engineering", "FastAPI", "RAG", "Gemini/OpenAI API", "Vector DB"],
+      "secondary_skills": ["LangChain", "Fine-tuning", "Docker", "Cloud", "Machine Learning basics", "Embeddings"],
+      "signal_keywords": [
+        "AI", "artificial intelligence", "ChatGPT", "GPT", "Gemini", "LLM",
+        "chatbot AI", "integrasi AI", "AI application", "prompt", "generative AI",
+        "AI tools", "bikin aplikasi AI", "AI agent", "RAG"
+      ],
+      "anti_signals": [
+        "tidak suka coding", "hanya data analyst", "tidak tertarik AI",
+        "frontend saja", "mobile saja", "network"
+      ],
+      "indonesia_job_titles": ["AI Engineer", "AI Developer", "Generative AI Engineer", "LLM Engineer"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "8000000-15000000",
+      "avg_salary_idr_mid": "15000000-35000000",
+      "demand_level": "medium_growing"
+    },
+
+    {
+      "role_id": "nlp_engineer",
+      "role_name": "NLP Engineer",
+      "role_name_id": "NLP Engineer",
+      "cluster": "ml",
+      "description": "Spesialisasi dalam pemrosesan teks dan bahasa alami — sentiment analysis, text classification, language models.",
+      "primary_skills": ["Python", "NLP", "NLTK", "transformers", "BERT", "scikit-learn", "Text Processing"],
+      "secondary_skills": ["spaCy", "Hugging Face", "LLM Fine-tuning", "Bahasa Indonesia NLP", "Deep Learning"],
+      "signal_keywords": [
+        "NLP", "text", "bahasa", "sentiment", "teks", "language model",
+        "suka bahasa dan data", "analisis teks", "klasifikasi teks", "chatbot",
+        "pemrosesan bahasa", "natural language"
+      ],
+      "anti_signals": [
+        "tidak suka matematika", "tidak mau research", "frontend", "mobile",
+        "infrastruktur", "network", "tidak suka teks"
+      ],
+      "indonesia_job_titles": ["NLP Engineer", "NLP Researcher", "Computational Linguist", "AI Engineer - NLP"],
+      "min_postings_threshold": 3,
+      "avg_salary_idr_junior": "8000000-15000000",
+      "avg_salary_idr_mid": "15000000-30000000",
+      "demand_level": "low_growing"
+    },
+
+    {
+      "role_id": "devops_engineer",
+      "role_name": "DevOps Engineer",
+      "role_name_id": "DevOps Engineer",
+      "cluster": "infra",
+      "description": "Membangun dan mengelola CI/CD pipeline, infrastruktur cloud, containerization, dan automation deployment.",
+      "primary_skills": ["Docker", "Kubernetes", "CI/CD", "Linux", "AWS/GCP/Azure", "Git", "Shell Scripting"],
+      "secondary_skills": ["Terraform", "Ansible", "Jenkins", "GitHub Actions", "Prometheus", "Grafana", "Python"],
+      "signal_keywords": [
+        "devops", "deployment", "docker", "kubernetes", "CI/CD", "pipeline",
+        "otomatisasi", "infrastructure", "cloud", "server management",
+        "monitoring", "suka otomasi", "release", "Linux", "bash"
+      ],
+      "anti_signals": [
+        "tidak suka server", "hanya coding aplikasi", "tidak mau Linux",
+        "data science", "machine learning", "frontend", "mobile"
+      ],
+      "indonesia_job_titles": ["DevOps Engineer", "Site Reliability Engineer", "Platform Engineer", "Infrastructure Engineer"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "7000000-13000000",
+      "avg_salary_idr_mid": "13000000-25000000",
+      "demand_level": "medium_high"
+    },
+
+    {
+      "role_id": "cloud_engineer",
+      "role_name": "Cloud Engineer",
+      "role_name_id": "Cloud Engineer",
+      "cluster": "infra",
+      "description": "Merancang dan mengelola infrastruktur cloud — migrasi, optimisasi cost, arsitektur cloud-native.",
+      "primary_skills": ["AWS", "GCP", "Azure", "Cloud Architecture", "Linux", "Networking", "Security", "IaC"],
+      "secondary_skills": ["Terraform", "Kubernetes", "Docker", "Python", "Cost Optimization", "Cloud Security"],
+      "signal_keywords": [
+        "cloud", "AWS", "GCP", "Azure", "infrastruktur cloud", "server cloud",
+        "cloud migration", "cloud native", "suka infrastructure", "server management"
+      ],
+      "anti_signals": [
+        "tidak mau server", "hanya coding", "data science", "machine learning",
+        "frontend", "mobile", "tidak mau Linux"
+      ],
+      "indonesia_job_titles": ["Cloud Engineer", "Cloud Architect", "AWS Engineer", "GCP Engineer"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "8000000-14000000",
+      "avg_salary_idr_mid": "14000000-28000000",
+      "demand_level": "medium_high"
+    },
+
+    {
+      "role_id": "system_administrator",
+      "role_name": "System Administrator",
+      "role_name_id": "System Administrator",
+      "cluster": "infra",
+      "description": "Mengelola dan memelihara server, jaringan, dan sistem IT perusahaan.",
+      "primary_skills": ["Linux", "Windows Server", "Networking", "Active Directory", "Backup", "Shell Scripting"],
+      "secondary_skills": ["VMware", "Docker", "Cloud basics", "Security", "Monitoring", "Troubleshooting"],
+      "signal_keywords": [
+        "sysadmin", "server", "Linux", "Windows server", "jaringan IT",
+        "manage server", "IT operations", "pemeliharaan sistem", "troubleshoot"
+      ],
+      "anti_signals": [
+        "tidak mau server", "hanya coding aplikasi", "data science", "machine learning",
+        "frontend", "mobile", "tidak mau kerja teknis"
+      ],
+      "indonesia_job_titles": ["System Administrator", "IT Administrator", "Server Administrator", "IT Support Senior"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "5000000-9000000",
+      "avg_salary_idr_mid": "9000000-18000000",
+      "demand_level": "medium"
+    },
+
+    {
+      "role_id": "network_engineer",
+      "role_name": "Network Engineer",
+      "role_name_id": "Network Engineer",
+      "cluster": "infra",
+      "description": "Merancang, membangun, dan mengelola infrastruktur jaringan komputer.",
+      "primary_skills": ["Cisco", "Networking", "TCP/IP", "Routing", "Switching", "Firewall", "VPN", "CCNA"],
+      "secondary_skills": ["OSPF", "BGP", "SD-WAN", "Network Security", "Wireshark", "Linux"],
+      "signal_keywords": [
+        "jaringan", "network", "Cisco", "router", "switch", "kabel jaringan",
+        "koneksi internet", "LAN WAN", "infrastruktur jaringan", "CCNA",
+        "suka jaringan", "networking"
+      ],
+      "anti_signals": [
+        "tidak suka jaringan", "hanya coding", "data science", "machine learning",
+        "frontend", "mobile", "tidak mau kerja lapangan"
+      ],
+      "indonesia_job_titles": ["Network Engineer", "Network Administrator", "IT Network Specialist", "NOC Engineer"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "5000000-9000000",
+      "avg_salary_idr_mid": "9000000-18000000",
+      "demand_level": "medium"
+    },
+
+    {
+      "role_id": "qa_engineer",
+      "role_name": "QA Engineer",
+      "role_name_id": "QA / Test Engineer",
+      "cluster": "qa",
+      "description": "Memastikan kualitas software melalui manual dan automated testing.",
+      "primary_skills": ["Manual Testing", "Test Cases", "Bug Reporting", "Selenium", "API Testing", "Postman"],
+      "secondary_skills": ["Cypress", "JMeter", "Performance Testing", "Python", "JIRA", "Agile", "SQL"],
+      "signal_keywords": [
+        "testing", "QA", "quality assurance", "test", "mencari bug", "kualitas software",
+        "suka detail", "teliti", "automation test", "cek aplikasi", "pengujian"
+      ],
+      "anti_signals": [
+        "tidak suka detail", "tidak teliti", "hanya development", "data science",
+        "machine learning", "tidak mau testing"
+      ],
+      "indonesia_job_titles": ["QA Engineer", "Software Tester", "Test Engineer", "Quality Assurance Analyst"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "5000000-9000000",
+      "avg_salary_idr_mid": "9000000-18000000",
+      "demand_level": "medium"
+    },
+
+    {
+      "role_id": "cybersecurity_analyst",
+      "role_name": "Cybersecurity Analyst",
+      "role_name_id": "Analis Keamanan Siber",
+      "cluster": "qa",
+      "description": "Melindungi sistem dan data dari ancaman cyber. Monitoring, incident response, vulnerability assessment.",
+      "primary_skills": ["Network Security", "Linux", "SIEM", "Vulnerability Assessment", "Penetration Testing basics", "Security Monitoring"],
+      "secondary_skills": ["OWASP", "Kali Linux", "Wireshark", "Python", "Incident Response", "SOC", "CEH", "CompTIA Security+"],
+      "signal_keywords": [
+        "keamanan", "security", "hacker", "cyber", "protect", "vulnerability",
+        "penetration testing", "ethical hacking", "enkripsi", "ancaman",
+        "suka keamanan IT", "security awareness", "SOC"
+      ],
+      "anti_signals": [
+        "tidak peduli keamanan", "hanya coding fitur", "data science",
+        "machine learning", "frontend", "tidak mau belajar attack defense"
+      ],
+      "indonesia_job_titles": ["Cybersecurity Analyst", "IT Security Analyst", "SOC Analyst", "Information Security Officer"],
+      "min_postings_threshold": 3,
+      "avg_salary_idr_junior": "6000000-11000000",
+      "avg_salary_idr_mid": "11000000-22000000",
+      "demand_level": "medium_growing"
+    },
+
+    {
+      "role_id": "it_support",
+      "role_name": "IT Support / Helpdesk",
+      "role_name_id": "IT Support",
+      "cluster": "qa",
+      "description": "Memberikan dukungan teknis kepada pengguna — troubleshooting hardware, software, dan jaringan.",
+      "primary_skills": ["Troubleshooting", "Windows", "Hardware", "Networking basics", "Customer Service", "Documentation"],
+      "secondary_skills": ["Linux basics", "Active Directory", "Office 365", "Remote Support", "ITIL"],
+      "signal_keywords": [
+        "IT support", "helpdesk", "bantu orang", "troubleshoot", "service desk",
+        "masalah komputer", "suka bantu orang dengan IT", "user support",
+        "maintenance komputer", "teknis dan komunikasi"
+      ],
+      "anti_signals": [
+        "tidak mau bantu orang", "hanya coding", "data science",
+        "machine learning", "tidak mau kerja langsung dengan user"
+      ],
+      "indonesia_job_titles": ["IT Support", "Helpdesk Technician", "IT Technician", "Desktop Support"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "3500000-6000000",
+      "avg_salary_idr_mid": "6000000-12000000",
+      "demand_level": "high"
+    },
+
+    {
+      "role_id": "cv_engineer",
+      "role_name": "Computer Vision Engineer",
+      "role_name_id": "Computer Vision Engineer",
+      "cluster": "ml",
+      "description": "Spesialisasi dalam pemrosesan gambar dan video menggunakan deep learning — object detection, image classification.",
+      "primary_skills": ["Python", "OpenCV", "Deep Learning", "PyTorch", "TensorFlow", "CNN", "Object Detection"],
+      "secondary_skills": ["YOLO", "Image Segmentation", "Transfer Learning", "CUDA", "Data Augmentation"],
+      "signal_keywords": [
+        "computer vision", "image processing", "gambar", "video", "deteksi objek",
+        "object detection", "OpenCV", "CNN", "klasifikasi gambar",
+        "suka gambar dan AI", "vision AI"
+      ],
+      "anti_signals": [
+        "tidak suka matematika", "tidak mau deep learning", "hanya data analyst",
+        "frontend", "mobile", "network", "tidak tertarik dengan image"
+      ],
+      "indonesia_job_titles": ["Computer Vision Engineer", "CV Engineer", "Image Processing Engineer", "AI Engineer - Vision"],
+      "min_postings_threshold": 3,
+      "avg_salary_idr_junior": "8000000-15000000",
+      "avg_salary_idr_mid": "15000000-30000000",
+      "demand_level": "low_growing"
+    },
+
+    {
+      "role_id": "ui_ux_designer",
+      "role_name": "UI/UX Designer",
+      "role_name_id": "Desainer UI/UX",
+      "cluster": "design",
+      "description": "Merancang antarmuka aplikasi dan pengalaman pengguna berdasarkan riset.",
+      "primary_skills": ["Figma", "User Research", "Wireframing", "Prototyping", "UI Design", "UX Design"],
+      "secondary_skills": ["Adobe XD", "Sketch", "Usability Testing", "HTML/CSS basics", "Design System"],
+      "signal_keywords": [
+        "desain", "UI", "UX", "tampilan", "pengalaman pengguna", "figma",
+        "wireframe", "prototype", "suka desain", "riset pengguna", "estetika"
+      ],
+      "anti_signals": [
+        "suka coding", "database", "backend", "machine learning", "infrastruktur"
+      ],
+      "indonesia_job_titles": ["UI/UX Designer", "Product Designer", "UX Researcher", "UI Designer"],
+      "min_postings_threshold": 8,
+      "avg_salary_idr_junior": "5000000-9000000",
+      "avg_salary_idr_mid": "9000000-18000000",
+      "demand_level": "high"
+    },
+
+    {
+      "role_id": "graphic_designer",
+      "role_name": "Graphic / Multimedia Designer",
+      "role_name_id": "Desainer Grafis / Multimedia",
+      "cluster": "design",
+      "description": "Mendesain materi visual, ilustrasi, motion graphic, atau video untuk promosi dan konten.",
+      "primary_skills": ["Adobe Illustrator", "Photoshop", "Premiere Pro", "After Effects", "Graphic Design"],
+      "secondary_skills": ["Animation", "Video Editing", "Content Creation", "Typography", "Color Theory"],
+      "signal_keywords": [
+        "desain grafis", "multimedia", "edit video", "motion graphic", "logo",
+        "konten", "sosmed", "premiere", "after effects", "ilustrasi", "animasi"
+      ],
+      "anti_signals": [
+        "coding", "programming", "database", "server", "logic"
+      ],
+      "indonesia_job_titles": ["Graphic Designer", "Multimedia Designer", "Video Editor", "Motion Graphic Designer"],
+      "min_postings_threshold": 5,
+      "avg_salary_idr_junior": "4000000-7000000",
+      "avg_salary_idr_mid": "7000000-15000000",
+      "demand_level": "medium_high"
+    }
+  ]
+}

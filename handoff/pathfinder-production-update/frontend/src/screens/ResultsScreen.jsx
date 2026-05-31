@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const PathyChatDrawer = lazy(() => import('../components/PathyChatDrawer'));
+const GmailShareModal = lazy(() => import('../components/GmailShareModal'));
 const JobsListDrawer = lazy(() => import('../components/JobsListDrawer'));
 
 const ALTERNATIVE_PROJECTS = {
@@ -121,26 +122,6 @@ const ALTERNATIVE_PROJECTS = {
       week_2: "Week 2: Ekspor bukti log audit dalam format PDF/HTML lengkap dengan rekomendasi perbaikan."
     }
   ],
-  creative3d: [
-    {
-      name: "Short 3D Animation Portfolio Film",
-      dataset_name: "Blender Scene & Shot Breakdown",
-      duration_weeks: 3,
-      skills_closed: ["Storyboarding", "3D Animation", "Lighting & Rendering"],
-      tech_stack: ["Blender", "DaVinci Resolve", "ArtStation"],
-      week_1: "Week 1: Buat storyboard, asset list, camera plan, dan satu test shot yang polished.",
-      week_2: "Week 2: Animate sequence 20-30 detik, render, lalu publish breakdown reel."
-    },
-    {
-      name: "Motion Graphics Product Teaser",
-      dataset_name: "Brand Animation Brief",
-      duration_weeks: 2,
-      skills_closed: ["Keyframing", "Composition", "Video Editing"],
-      tech_stack: ["Blender", "After Effects", "Premiere/DaVinci"],
-      week_1: "Week 1: Susun moodboard, style frame, dan animatic kasar.",
-      week_2: "Week 2: Finalisasi motion, sound cue, subtitle, dan upload case study."
-    }
-  ],
   web: [
     {
       name: "Customer Interactive Web Dashboard",
@@ -217,6 +198,7 @@ export default function ResultsScreen() {
 
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showGmailShare, setShowGmailShare] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [initialMessage, setInitialMessage] = useState('');
   const [showJobsExplorer, setShowJobsExplorer] = useState(false);
@@ -240,20 +222,16 @@ export default function ResultsScreen() {
       return;
     }
     
-    const roleId = (data?.top_roles?.[0]?.role_id || "").toLowerCase();
-    const roleName = (data?.top_roles?.[0]?.role_name || "").toLowerCase();
-    const roleText = roleId + " " + roleName;
+    const roleId = data?.top_roles?.[0]?.role_id || "";
     let category = "web";
-    if (/cyber|security|keamanan|siber|soc|siem|network_engineer|threat|incident/.test(roleText)) {
-      category = "cybersecurity";
-    } else if (/anim|3d|motion|blender|film|vfx|cinematic|renderer/.test(roleText)) {
-      category = "creative3d";
-    } else if (/data_analyst|bi_intern|data_ops|data(?!base)|analyst|bi\b/.test(roleText)) {
+    if (roleId.toLowerCase().includes("data_analyst") || roleId.toLowerCase().includes("bi_intern") || roleId.toLowerCase().includes("data_ops") || roleId.toLowerCase().includes("data")) {
       category = "data";
-    } else if (/uiux|product_designer|graphic|ui.ux|figma|desain|design/.test(roleText)) {
+    } else if (roleId.toLowerCase().includes("uiux") || roleId.toLowerCase().includes("product_designer") || roleId.toLowerCase().includes("graphic")) {
       category = "uiux";
-    } else if (/backend|devops|api|database|node|express|fastify/.test(roleText)) {
+    } else if (roleId.toLowerCase().includes("backend") || roleId.toLowerCase().includes("devops")) {
       category = "backend";
+    } else if (roleId.toLowerCase().includes("cyber") || roleId.toLowerCase().includes("network_engineer")) {
+      category = "cybersecurity";
     }
 
     const list = ALTERNATIVE_PROJECTS[category] || ALTERNATIVE_PROJECTS.web;
@@ -556,7 +534,11 @@ export default function ResultsScreen() {
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
-<button onClick={handleExportReport} className="bg-white border border-border rounded-full py-[9px] px-4 text-[13px] text-ink inline-flex items-center gap-2 hover:bg-cream-2 transition-colors cursor-pointer">
+            <button onClick={() => setShowGmailShare(true)} className="bg-white border border-border rounded-full py-[9px] px-4 text-[13px] text-ink inline-flex items-center gap-2 hover:bg-cream-2 transition-colors cursor-pointer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              {isEn ? "Email via Gmail" : "Kirim via Gmail"}
+            </button>
+            <button onClick={handleExportReport} className="bg-white border border-border rounded-full py-[9px] px-4 text-[13px] text-ink inline-flex items-center gap-2 hover:bg-cream-2 transition-colors cursor-pointer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               {isEn ? "Export" : "Ekspor"}
             </button>
@@ -959,6 +941,7 @@ export default function ResultsScreen() {
       </button>
 
       <Suspense fallback={null}>
+        <GmailShareModal isOpen={showGmailShare} onClose={() => setShowGmailShare(false)} sessionData={data} />
         <PathyChatDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} initialMessage={initialMessage} sessionData={data} setSessionData={setData} />
         <JobsListDrawer 
           isOpen={showJobsExplorer} 

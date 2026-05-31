@@ -1,0 +1,10 @@
+import { enforceMethod, enforceRateLimit, handleOptions, readyPayload, setCommonHeaders } from "../_lib/pathfinder";
+
+export default function handler(req: any, res: any) {
+  if (handleOptions(req, res)) return;
+  setCommonHeaders(req, res);
+  if (!enforceMethod(req, res, "GET")) return;
+  if (!enforceRateLimit(req, res, "api")) return;
+  const payload = readyPayload();
+  res.status(payload.status === "ready" ? 200 : 503).json({ ...payload, mode: process.env.NODE_ENV || "production", platform: "vercel" });
+}

@@ -35,7 +35,10 @@ export default function LoginScreen() {
       return;
     }
 
-    toast.success(isEn ? "Signed in. Complete the career interview so PathFinder can save your first profile." : "Berhasil masuk. Selesaikan interview karir supaya PathFinder bisa menyimpan profil pertamamu.");
+    await supabase?.auth?.signOut();
+    sessionStorage.removeItem('logged_in');
+    localStorage.removeItem('pathy_logged_in');
+    toast.error(isEn ? "Please complete the career interview first so PathFinder has a profile to save." : "Silakan selesaikan interview karir dulu supaya PathFinder punya profil yang bisa disimpan.");
     navigate('/conversation');
   };
 
@@ -244,8 +247,20 @@ export default function LoginScreen() {
               </button>
             </form>
 
+            <div className="bg-orange/5 border border-orange/20 rounded-xl p-3.5 mt-4 text-left">
+              <span className="font-mono text-[9px] text-orange tracking-[0.08em] font-bold block mb-1">
+                {isEn ? "GMAIL INTEGRATION TIPS" : "TIPS INTEGRASI GMAIL"}
+              </span>
+              <p className="m-0 text-[11.5px] text-ink-2 leading-relaxed">
+                {isEn ? (
+                  <>Signing in with <strong className="text-ink font-semibold">Google</strong> above is recommended. Beyond one-click access without waiting for PIN codes, you instantly pair Gmail capabilities to submit your official reports.</>
+                ) : (
+                  <>Masuk dengan <strong className="text-ink font-semibold">Google</strong> di atas adalah opsi terbaik. Selain masuk instan tanpa repot menunggu email OTP, kamu langsung menghubungkan integrasi Gmail untuk mengirim laporan kesiapan resmi.</>
+                )}
+              </p>
+            </div>
 
-<p className="text-[12px] text-muted-dark leading-relaxed mt-4 tracking-[0.01em]">
+            <p className="text-[12px] text-muted-dark leading-relaxed mt-4 tracking-[0.01em]">
               {isEn ? (
                 <>If your email has not been registered, we will automatically set up a starting profile. By signing in, you agree to our <a href="#" className="text-ink underline font-medium">Terms of Use</a>.</>
               ) : (

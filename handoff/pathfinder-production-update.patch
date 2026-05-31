@@ -1,0 +1,2133 @@
+diff --git a/.env.example b/.env.example
+index 0c9d2c8..611f1bc 100644
+--- a/.env.example
++++ b/.env.example
+@@ -7,12 +7,21 @@ GEMINI_API_KEY="MY_GEMINI_API_KEY"
+ # AI Studio automatically injects this at runtime with the Cloud Run service URL.
+ # Used for self-referential links, OAuth callbacks, and API endpoints.
+ APP_URL="MY_APP_URL"
++CORS_ORIGINS="http://localhost:3000,http://localhost:5173"
++API_RATE_LIMIT_PER_MIN="120"
++AI_RATE_LIMIT_PER_MIN="12"
++AI_TIMEOUT_MS="9000"
++ANALYSIS_CACHE_TTL_MS="1800000"
+ 
+ # SUPABASE
+ VITE_SUPABASE_URL="YOUR_SUPABASE_URL"
+ VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
+ SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
+ 
++# Optional only for Google AI Studio/IDX preview sandboxes that cannot complete OAuth.
++# Keep false/empty on Vercel and final Cloud Run production deployments.
++VITE_PREVIEW_AUTH_BYPASS="false"
++
+ # BACKUP AI API KEYS (Used automatically when Gemini API reaches its free quota limits)
+ GROQ_API_KEY=
+ OPENROUTER_API_KEY=
+diff --git a/README.md b/README.md
+index 1eb69e6..2c25ba5 100644
+--- a/README.md
++++ b/README.md
+@@ -24,3 +24,48 @@ From the repository root:
+ 2. `npm run start`
+ 
+ *(Note for AI Studio Live Preview: The application uses Vite middleware via Express to serve the frontend in dev mode, and static generation in production mode).*
++
++## Production Readiness Notes
++- Deploy the root Node service (`npm run build && npm run start`) as the primary full-stack app. The `/backend` FastAPI service is kept as a secondary/reference API and needs a separate Cloud Run service if used.
++- Set `CORS_ORIGINS` to the exact production domains only, for example `https://your-app.vercel.app,https://your-cloud-run-url.run.app`.
++- Keep `VITE_PREVIEW_AUTH_BYPASS=false` on Vercel and final Cloud Run deployments.
++- Required production secrets: `GEMINI_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and Supabase OAuth redirect URLs for the final HTTPS domain.
++- Recommended safety envs:
++  - `API_RATE_LIMIT_PER_MIN=120`
++  - `AI_RATE_LIMIT_PER_MIN=12`
++  - `AI_TIMEOUT_MS=9000`
++  - `ANALYSIS_CACHE_TTL_MS=1800000`
++- Before public launch, run `npm run lint`, `npm run build`, `npm audit --audit-level=moderate`, backend Python compile, and a 50-user load test against `/api/v1/analysis` and `/api/v1/chat`.
++
++## Vercel Deployment
++This repo is ready for Vercel using static Vite output plus serverless API routes in `/api`.
++
++1. Push the latest code to GitHub.
++2. Import the GitHub repo in Vercel.
++3. Use these settings:
++   - Framework Preset: `Vite`
++   - Build Command: `npm run build`
++   - Output Directory: `dist`
++4. Add Environment Variables in Vercel:
++   - `GEMINI_API_KEY`
++   - `VITE_SUPABASE_URL`
++   - `VITE_SUPABASE_ANON_KEY`
++   - `APP_URL=https://your-vercel-domain.vercel.app`
++   - `CORS_ORIGINS=https://your-vercel-domain.vercel.app`
++   - `VITE_PREVIEW_AUTH_BYPASS=false`
++   - `API_RATE_LIMIT_PER_MIN=120`
++   - `AI_RATE_LIMIT_PER_MIN=12`
++   - `AI_TIMEOUT_MS=9000`
++   - `ANALYSIS_CACHE_TTL_MS=1800000`
++   - Optional fallback providers: `GROQ_API_KEY`, `OPENROUTER_API_KEY`
++5. In Supabase Auth, set:
++   - Site URL: `https://your-vercel-domain.vercel.app`
++   - Redirect URLs: `https://your-vercel-domain.vercel.app/**`
++   - Google provider callback in Google Cloud OAuth: `https://YOUR_SUPABASE_PROJECT.supabase.co/auth/v1/callback`
++6. Apply `supabase/schema.sql` in Supabase SQL editor before testing login/save.
++7. After deploy, verify:
++   - `/api/v1/health`
++   - `/api/v1/ready`
++   - onboarding -> loading -> results
++   - Google login
++   - save result to Supabase
+diff --git a/api/_lib/pathfinder.ts b/api/_lib/pathfinder.ts
+new file mode 100644
+index 0000000..cacd567
+--- /dev/null
++++ b/api/_lib/pathfinder.ts
+@@ -0,0 +1,276 @@
++import { GoogleGenAI } from "@google/genai";
++import { z } from "zod";
++import crypto from "crypto";
++
++const rateBuckets = new Map<string, { resetAt: number; count: number }>();
++const analysisCache = new Map<string, { expiresAt: number; value: any }>();
++let ai: GoogleGenAI | null = null;
++
++const AI_LIMIT = Number(process.env.AI_RATE_LIMIT_PER_MIN || 12);
++const API_LIMIT = Number(process.env.API_RATE_LIMIT_PER_MIN || 120);
++const CACHE_TTL_MS = Number(process.env.ANALYSIS_CACHE_TTL_MS || 1_800_000);
++const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 9_000);
++
++export const conversationSchema = z.object({
++  question_index: z.number().int().min(0).max(10),
++  previous_answer: z.string().trim().max(1600).default(""),
++  lang: z.enum(["id", "en"]).default("id"),
++});
++
++export const analysisSchema = z.object({
++  answers: z.array(z.string().trim().max(1200)).min(5).max(5),
++  session_id: z.string().trim().min(3).max(120).regex(/^[a-zA-Z0-9._:-]+$/),
++  lang: z.enum(["id", "en"]).default("id"),
++});
++
++export const chatSchema = z.object({
++  message: z.string().trim().min(1).max(1200),
++  sessionData: z.unknown().optional(),
++  lang: z.enum(["id", "en"]).default("id"),
++  mentorStyle: z.enum(["profesional", "santai"]).default("santai"),
++});
++
++export function setCommonHeaders(req: any, res: any) {
++  const requestId = req.headers["x-request-id"] || crypto.randomUUID();
++  const origin = req.headers.origin;
++  const allowedOrigins = (process.env.CORS_ORIGINS || process.env.APP_URL || "")
++    .split(",")
++    .map((entry) => entry.trim())
++    .filter(Boolean);
++
++  res.setHeader("x-request-id", requestId);
++  res.setHeader("X-Content-Type-Options", "nosniff");
++  res.setHeader("Referrer-Policy", "no-referrer");
++  res.setHeader("X-Frame-Options", "SAMEORIGIN");
++
++  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
++    if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
++    res.setHeader("Vary", "Origin");
++    res.setHeader("Access-Control-Allow-Credentials", "true");
++    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id");
++    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
++  }
++
++  return requestId;
++}
++
++export function handleOptions(req: any, res: any) {
++  setCommonHeaders(req, res);
++  if (req.method === "OPTIONS") {
++    res.status(204).end();
++    return true;
++  }
++  return false;
++}
++
++export function enforceMethod(req: any, res: any, method: string) {
++  if (req.method !== method) {
++    res.status(405).json({ error: "Method not allowed" });
++    return false;
++  }
++  return true;
++}
++
++export function enforceRateLimit(req: any, res: any, kind: "api" | "ai" = "api") {
++  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "anonymous";
++  const limit = kind === "ai" ? AI_LIMIT : API_LIMIT;
++  const key = `${kind}:${ip}`;
++  const now = Date.now();
++  const bucket = rateBuckets.get(key);
++
++  if (!bucket || bucket.resetAt < now) {
++    rateBuckets.set(key, { resetAt: now + 60_000, count: 1 });
++    return true;
++  }
++
++  bucket.count += 1;
++  if (bucket.count > limit) {
++    res.setHeader("Retry-After", Math.ceil((bucket.resetAt - now) / 1000));
++    res.status(429).json({ error: "Too many requests. Please wait a moment and try again." });
++    return false;
++  }
++
++  return true;
++}
++
++export function validate<T>(schema: z.ZodType<T>, req: any, res: any): T | null {
++  const parsed = schema.safeParse(req.body);
++  if (!parsed.success) {
++    res.status(400).json({
++      error: "Invalid request body",
++      details: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
++    });
++    return null;
++  }
++  return parsed.data;
++}
++
++function getAiClient() {
++  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
++  if (!key) throw new Error("GEMINI_API_KEY is not configured");
++  if (!ai) ai = new GoogleGenAI({ apiKey: key });
++  return ai;
++}
++
++export async function generateJson(prompt: string, useSearch = false) {
++  const client = getAiClient();
++  const config: any = { responseMimeType: "application/json" };
++  if (useSearch) config.tools = [{ googleSearch: {} }];
++
++  const timeout = new Promise((_, reject) => {
++    setTimeout(() => reject(new Error(`Gemini generation timed out after ${AI_TIMEOUT_MS}ms`)), AI_TIMEOUT_MS);
++  });
++
++  const response: any = await Promise.race([
++    client.models.generateContent({
++      model: "gemini-2.0-flash",
++      contents: prompt,
++      config,
++    }),
++    timeout,
++  ]);
++
++  return JSON.parse(String(response.text || "{}").replace(/```json/g, "").replace(/```/g, "").trim());
++}
++
++export function analysisCacheKey(answers: string[], lang: string) {
++  return crypto.createHash("sha256").update(JSON.stringify({ answers: answers.map((answer) => answer.toLowerCase()), lang })).digest("hex");
++}
++
++export function getCachedAnalysis(key: string) {
++  const cached = analysisCache.get(key);
++  if (!cached) return null;
++  if (cached.expiresAt < Date.now()) {
++    analysisCache.delete(key);
++    return null;
++  }
++  return cached.value;
++}
++
++export function setCachedAnalysis(key: string, value: any) {
++  if (analysisCache.size > 500) {
++    const firstKey = analysisCache.keys().next().value;
++    if (firstKey) analysisCache.delete(firstKey);
++  }
++  analysisCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
++}
++
++export function fallbackAnalysis(answers: string[], sessionId: string, lang = "id") {
++  const isEn = lang === "en";
++  const userName = answers[0]?.trim() || (isEn ? "Friend" : "Kamu");
++  const joined = `${answers[1] || ""} ${answers[2] || ""}`.toLowerCase();
++  const location = answers[3]?.trim() || "Jakarta";
++  const isBackend = /\b(rest\s+api|api|backend|database|basis\s+data|server|express|node(?:\.js)?|postgres(?:ql)?|jwt|middleware|endpoint)\b/.test(joined);
++  const isUi = /ui|ux|figma|design|desain|wireframe/.test(joined);
++  const isData = !isBackend && /data|sql|excel|spreadsheet|dashboard|analyst|python/.test(joined);
++
++  const role = isBackend ? "Junior Backend Engineer" : isData ? "Junior Data Analyst" : isUi ? "Junior UI/UX Designer" : "Junior Web Developer";
++  const skill = isBackend ? "API Authentication & Testing" : isData ? "Python (pandas)" : isUi ? "Design System Setup" : "React/JavaScript ES6";
++  const project = isBackend
++    ? {
++        name: "Secure E-Commerce REST API Engine",
++        dataset_name: "Dynamic API Middleware",
++        duration_weeks: 2,
++        skills_closed: ["JWT Authentication", "Middleware Routing", "Database Migration Setup"],
++        tech_stack: ["Express.js", "PostgreSQL"],
++        week_1: "Week 1: Design product schemas and implement authenticated CRUD routes.",
++        week_2: "Week 2: Add validation, API tests, docs, and deploy the REST API.",
++      }
++    : isData
++    ? {
++        name: "Customer Retention Cohort Dashboard",
++        dataset_name: "E-Commerce Market Dataset",
++        duration_weeks: 2,
++        skills_closed: ["SQL Joins", "Cohort Analysis", "Data Storytelling"],
++        tech_stack: ["Looker Studio", "BigQuery"],
++        week_1: "Week 1: Clean order and customer data, then build a cohort base table.",
++        week_2: "Week 2: Build retention visuals and explain the business insight.",
++      }
++    : {
++        name: "Customer Interactive Web Dashboard",
++        dataset_name: "Product Catalog Dataset",
++        duration_weeks: 2,
++        skills_closed: ["Async API Fetching", "Dynamic Filtering", "State Management"],
++        tech_stack: ["Vite React", "Tailwind CSS"],
++        week_1: "Week 1: Build a responsive dashboard layout.",
++        week_2: "Week 2: Add filters, API states, and deploy the finished portfolio.",
++      };
++
++  return {
++    session_id: sessionId,
++    user_name: userName,
++    readiness_score: 75,
++    top_roles: [
++      { rank: 1, role_name: role, role_id: role.toLowerCase().replace(/[^a-z0-9]+/g, "_"), fit_score: 82, skills_shown: project.skills_closed.slice(0, 3), job_count: 8 },
++      { rank: 2, role_name: isBackend ? "Web Developer (Backend Focus)" : isData ? "BI Analyst Intern" : "Frontend Engineer Intern", role_id: "secondary_role", fit_score: 74, skills_shown: ["Portfolio", "Communication"], job_count: 6 },
++    ],
++    signal_chips: isEn ? ["practical builder", "portfolio ready", "needs sharper proof"] : ["builder praktis", "siap portfolio", "butuh bukti lebih tajam"],
++    skill_gaps: [
++      { skill, pct: 80 },
++      { skill: isEn ? "Project storytelling" : "Storytelling portfolio", pct: 60 },
++    ],
++    scout_message: isEn
++      ? `${userName}, PathFinder is using safe fallback analysis because the live AI/search provider is unavailable. Your next best move is to finish one focused portfolio project and explain the problem, tools, and measurable result.`
++      : `${userName}, PathFinder sedang memakai analisis fallback aman karena provider AI/search live tidak tersedia. Langkah terbaikmu sekarang adalah menyelesaikan satu proyek portfolio yang fokus dan menjelaskan masalah, tools, serta hasil terukurnya.`,
++    follow_up_questions: isEn ? ["What should I build first?", "How do I make this portfolio-ready?"] : ["Apa yang sebaiknya aku bangun dulu?", "Gimana bikin ini siap jadi portfolio?"],
++    project,
++    visual_roadmap: [
++      { day: 7, title: isEn ? "Foundation" : "Fondasi", task: isEn ? "Set up repo, data, and project scope." : "Siapkan repo, data, dan scope proyek." },
++      { day: 30, title: "Milestone 1", task: isEn ? "Build the core workflow." : "Bangun workflow utama." },
++      { day: 60, title: "Milestone 2", task: isEn ? "Polish UI and explain decisions." : "Poles UI dan jelaskan keputusan." },
++      { day: 90, title: isEn ? "Publish" : "Publikasi", task: isEn ? "Deploy and link it in your CV." : "Deploy dan tautkan di CV." },
++    ],
++    jobs_analyzed: 20,
++    jobs_source: "Cached/Fallback Data",
++    is_live: false,
++    fetched_at: new Date().toISOString(),
++    live_jobs: [
++      { title: role, company: "Sample Tech Company", location, match: 82, type: "Full-time (Sample)", is_fallback: true },
++      { title: `${role} Intern`, company: "Sample Startup", location, match: 74, type: "Internship (Sample)", is_fallback: true },
++    ],
++  };
++}
++
++export function readyPayload() {
++  const configured = {
++    gemini: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY),
++    supabaseUrl: Boolean(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
++    cacheTtlMs: CACHE_TTL_MS,
++  };
++  return {
++    status: configured.gemini ? "ready" : "degraded",
++    configured,
++    cacheSize: analysisCache.size,
++  };
++}
++
++export function fallbackChatReply(message: string, sessionData: any, lang = "id") {
++  const isEn = lang === "en";
++  const project = sessionData?.project || {};
++  const role = sessionData?.top_roles?.[0]?.role_name || (isEn ? "your target role" : "role targetmu");
++  const projectName = project?.name || (isEn ? "your portfolio project" : "proyek portofoliomu");
++  const stack = Array.isArray(project?.tech_stack) && project.tech_stack.length
++    ? project.tech_stack.slice(0, 3).join(", ")
++    : (isEn ? "the simplest tools you already know" : "tools paling sederhana yang sudah kamu kuasai");
++  const lower = message.toLowerCase();
++  const asksTimeline = /timeline|roadmap|jadwal|belajar|minggu|week/.test(lower);
++  const asksPortfolio = /portfolio|portofolio|readme|github|demo/.test(lower);
++
++  if (isEn) {
++    if (asksTimeline) {
++      return `I can still help in offline mode. For ${role}, use a 7-day sprint: day 1 define the problem and success metric, day 2 collect or mock the data, days 3-4 build the smallest working ${projectName} with ${stack}, day 5 polish the UX, day 6 write the README with screenshots, and day 7 deploy plus record a short demo.`;
++    }
++    if (asksPortfolio) {
++      return `For a recruiter-ready portfolio, make ${projectName} easy to inspect: one live URL, one GitHub repo, a README with problem, tools, screenshots, and measurable outcome, plus 3 bullet points explaining what you personally built. Keep the scope small but finished.`;
++    }
++    return `Pathy is in offline guidance mode, but here is a concrete next step: open a fresh repo for ${projectName}, create the first screen or notebook using ${stack}, and write one clear goal at the top: what problem it solves, who it helps, and what result proves it works.`;
++  }
++
++  if (asksTimeline) {
++    return `Aku tetap bisa bantu dalam mode offline. Untuk ${role}, pakai sprint 7 hari: hari 1 tentukan masalah dan metrik sukses, hari 2 kumpulkan atau buat mock data, hari 3-4 bangun versi paling kecil dari ${projectName} dengan ${stack}, hari 5 poles UX, hari 6 tulis README dengan screenshot, dan hari 7 deploy plus rekam demo singkat.`;
++  }
++  if (asksPortfolio) {
++    return `Biar ${projectName} siap dilihat recruiter, pastikan ada satu live URL, satu repo GitHub, README berisi masalah, tools, screenshot, hasil terukur, dan 3 poin tentang bagian yang benar-benar kamu bangun sendiri. Scope kecil tidak masalah, yang penting selesai dan bisa dicoba.`;
++  }
++  return `Pathy sedang dalam mode panduan offline, tapi langkah pertamanya jelas: buat repo baru untuk ${projectName}, mulai screen/notebook paling sederhana memakai ${stack}, lalu tulis satu tujuan di atasnya: masalah apa yang diselesaikan, siapa yang dibantu, dan bukti apa yang menunjukkan hasilnya berhasil.`;
++}
+diff --git a/api/v1/analysis.ts b/api/v1/analysis.ts
+new file mode 100644
+index 0000000..8fbc909
+--- /dev/null
++++ b/api/v1/analysis.ts
+@@ -0,0 +1,74 @@
++import { analysisCacheKey, analysisSchema, enforceMethod, enforceRateLimit, fallbackAnalysis, generateJson, getCachedAnalysis, handleOptions, setCachedAnalysis, setCommonHeaders, validate } from "../_lib/pathfinder";
++
++export default async function handler(req: any, res: any) {
++  if (handleOptions(req, res)) return;
++  setCommonHeaders(req, res);
++  if (!enforceMethod(req, res, "POST")) return;
++  if (!enforceRateLimit(req, res, "ai")) return;
++
++  const body = validate(analysisSchema, req, res);
++  if (!body) return;
++
++  const cacheKey = analysisCacheKey(body.answers, body.lang);
++  const cached = getCachedAnalysis(cacheKey);
++  if (cached) {
++    res.setHeader("x-pathfinder-cache", "hit");
++    res.status(200).json({ ...cached, session_id: body.session_id, cache_status: "hit" });
++    return;
++  }
++
++  res.setHeader("x-pathfinder-cache", "miss");
++
++  try {
++    const isEn = body.lang === "en";
++    const prompt = `
++You are PathFinder AI, a career advisor for Indonesian IT fresh graduates.
++Analyze these 5 answers and return JSON only.
++
++Answers:
++Name: ${body.answers[0]}
++Proof of work: ${body.answers[1]}
++Engaging task: ${body.answers[2]}
++Location: ${body.answers[3]}
++Timeline/blocker: ${body.answers[4]}
++
++Return this exact JSON shape:
++{
++  "user_name": "first name",
++  "readiness_score": 75,
++  "top_roles": [{"rank":1,"role_id":"data_analyst","role_name":"Junior Data Analyst","fit_score":82,"skills_shown":["SQL"],"job_count":8}],
++  "signal_chips": ["short signal"],
++  "skill_gaps": [{"skill":"Python","pct":80}],
++  "scout_message": "2-3 concrete sentences in ${isEn ? "English" : "Indonesian"}",
++  "follow_up_questions": ["question"],
++  "project_recommendation": {"name":"project","dataset_name":"dataset","duration_weeks":2,"skills_closed":["skill"],"tech_stack":["tool"],"week_1":"task","week_2":"task"},
++  "visual_roadmap": [{"day":7,"title":"Setup","task":"task"},{"day":30,"title":"Milestone","task":"task"},{"day":60,"title":"Polish","task":"task"},{"day":90,"title":"Deploy","task":"task"}],
++  "jobs_analyzed": 20,
++  "live_jobs": [{"title":"role","company":"company","location":"location","match":82,"type":"Full-time"}]
++}`;
++    const result = await generateJson(prompt, true);
++    const responseBody = {
++      session_id: body.session_id,
++      user_name: result.user_name || body.answers[0] || "Kamu",
++      readiness_score: result.readiness_score || 70,
++      top_roles: result.top_roles || [],
++      signal_chips: result.signal_chips || [],
++      skill_gaps: result.skill_gaps || [],
++      scout_message: result.scout_message || "",
++      follow_up_questions: result.follow_up_questions || [],
++      project: result.project_recommendation || result.project || null,
++      visual_roadmap: result.visual_roadmap || null,
++      jobs_analyzed: result.jobs_analyzed || 20,
++      jobs_source: Array.isArray(result.live_jobs) && result.live_jobs.length > 0 ? "AI Google Search" : "Cached/Fallback Data",
++      is_live: Array.isArray(result.live_jobs) && result.live_jobs.length > 0,
++      fetched_at: new Date().toISOString(),
++      live_jobs: result.live_jobs || [],
++    };
++    setCachedAnalysis(cacheKey, responseBody);
++    res.status(200).json(responseBody);
++  } catch (err: any) {
++    const fallback = fallbackAnalysis(body.answers, body.session_id, body.lang);
++    setCachedAnalysis(cacheKey, fallback);
++    res.status(200).json(fallback);
++  }
++}
+diff --git a/api/v1/chat.ts b/api/v1/chat.ts
+new file mode 100644
+index 0000000..90ae5ae
+--- /dev/null
++++ b/api/v1/chat.ts
+@@ -0,0 +1,37 @@
++import { chatSchema, enforceMethod, enforceRateLimit, fallbackChatReply, generateJson, handleOptions, setCommonHeaders, validate } from "../_lib/pathfinder";
++
++export default async function handler(req: any, res: any) {
++  if (handleOptions(req, res)) return;
++  setCommonHeaders(req, res);
++  if (!enforceMethod(req, res, "POST")) return;
++  if (!enforceRateLimit(req, res, "ai")) return;
++
++  const body = validate(chatSchema, req, res);
++  if (!body) return;
++
++  try {
++    const isEn = body.lang === "en";
++    const tone = body.mentorStyle === "profesional"
++      ? (isEn ? "professional, formal, and focused" : "profesional, baku, dan terfokus")
++      : (isEn ? "casual and supportive" : "santai dan suportif");
++    const prompt = `
++You are Pathy, a career and project assistant.
++User message: "${body.message}"
++Current dashboard data:
++${JSON.stringify(body.sessionData || {})}
++
++Respond in ${isEn ? "English" : "Bahasa Indonesia"} with tone: ${tone}.
++Return JSON only:
++{"reply":"your answer","updatedData":null}`;
++    const result = await generateJson(prompt);
++    res.status(200).json({
++      reply: result.reply || (isEn ? "I can help you plan the next step." : "Aku bisa bantu susun langkah berikutnya."),
++      updatedData: result.updatedData || null,
++    });
++  } catch (err: any) {
++    res.status(200).json({
++      reply: fallbackChatReply(body.message, body.sessionData, body.lang),
++      updatedData: null,
++    });
++  }
++}
+diff --git a/api/v1/conversation/question.ts b/api/v1/conversation/question.ts
+new file mode 100644
+index 0000000..bae74a9
+--- /dev/null
++++ b/api/v1/conversation/question.ts
+@@ -0,0 +1,35 @@
++import { conversationSchema, enforceMethod, enforceRateLimit, generateJson, handleOptions, setCommonHeaders, validate } from "../../_lib/pathfinder";
++
++export default async function handler(req: any, res: any) {
++  if (handleOptions(req, res)) return;
++  setCommonHeaders(req, res);
++  if (!enforceMethod(req, res, "POST")) return;
++  if (!enforceRateLimit(req, res, "ai")) return;
++
++  const body = validate(conversationSchema, req, res);
++  if (!body) return;
++
++  const isEn = body.lang === "en";
++  if (body.question_index !== 2) {
++    res.status(200).json({ question: isEn ? "Static question" : "Pertanyaan statis", tip: "..." });
++    return;
++  }
++
++  try {
++    const prompt = isEn
++      ? `User answered Q1: "${body.previous_answer}". Generate Q2 asking what specific task engages them for hours. Return JSON ONLY: {"question":"...","tip":"..."}`
++      : `User menjawab Q1: "${body.previous_answer}". Buat Q2 yang menanyakan task spesifik apa yang bikin dia lupa waktu. Return JSON ONLY: {"question":"...","tip":"..."}`;
++    const result = await generateJson(prompt);
++    res.status(200).json(result);
++  } catch (err: any) {
++    res.status(200).json({
++      question: isEn
++        ? "From your project story, which specific task makes you lose track of time?"
++        : "Dari ceritamu tadi, bagian mana yang sering bikin kamu lupa waktu?",
++      tip: isEn
++        ? "This helps PathFinder match the role to your real working style."
++        : "Ini membantu PathFinder mencocokkan role dengan gaya kerjamu yang sebenarnya.",
++      degraded: true,
++    });
++  }
++}
+diff --git a/api/v1/health.ts b/api/v1/health.ts
+new file mode 100644
+index 0000000..d034f84
+--- /dev/null
++++ b/api/v1/health.ts
+@@ -0,0 +1,9 @@
++import { enforceMethod, enforceRateLimit, handleOptions, setCommonHeaders } from "../_lib/pathfinder";
++
++export default function handler(req: any, res: any) {
++  if (handleOptions(req, res)) return;
++  setCommonHeaders(req, res);
++  if (!enforceMethod(req, res, "GET")) return;
++  if (!enforceRateLimit(req, res, "api")) return;
++  res.status(200).json({ status: "ok", mode: process.env.NODE_ENV || "production", platform: "vercel" });
++}
+diff --git a/api/v1/ready.ts b/api/v1/ready.ts
+new file mode 100644
+index 0000000..82a49fd
+--- /dev/null
++++ b/api/v1/ready.ts
+@@ -0,0 +1,10 @@
++import { enforceMethod, enforceRateLimit, handleOptions, readyPayload, setCommonHeaders } from "../_lib/pathfinder";
++
++export default function handler(req: any, res: any) {
++  if (handleOptions(req, res)) return;
++  setCommonHeaders(req, res);
++  if (!enforceMethod(req, res, "GET")) return;
++  if (!enforceRateLimit(req, res, "api")) return;
++  const payload = readyPayload();
++  res.status(payload.status === "ready" ? 200 : 503).json({ ...payload, mode: process.env.NODE_ENV || "production", platform: "vercel" });
++}
+diff --git a/backend/.env.example b/backend/.env.example
+index 66ca0b2..ff0afb4 100644
+--- a/backend/.env.example
++++ b/backend/.env.example
+@@ -3,3 +3,4 @@ SUPABASE_URL=your_supabase_url_here
+ SUPABASE_KEY=your_supabase_anon_key_here
+ ENVIRONMENT=development
+ FRONTEND_URL=http://localhost:5173
++CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+diff --git a/backend/app/main.py b/backend/app/main.py
+index 51f6caf..26329d0 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -1,16 +1,23 @@
+ from fastapi import FastAPI
+ from fastapi.middleware.cors import CORSMiddleware
+ from .routes import conversation, analysis, auth
++import os
+ 
+ app = FastAPI(title="PathFinder API", version="1.0.0")
+ 
+ # Configure CORS
++allowed_origins = [
++    origin.strip()
++    for origin in os.getenv("CORS_ORIGINS", os.getenv("FRONTEND_URL", "http://localhost:5173,http://localhost:3000")).split(",")
++    if origin.strip()
++]
++
+ app.add_middleware(
+     CORSMiddleware,
+-    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
++    allow_origins=allowed_origins,
+     allow_credentials=True,
+-    allow_methods=["*"],
+-    allow_headers=["*"],
++    allow_methods=["GET", "POST", "OPTIONS"],
++    allow_headers=["Content-Type", "Authorization", "X-Request-Id"],
+ )
+ 
+ app.include_router(conversation.router, prefix="/api/v1/conversation", tags=["conversation"])
+diff --git a/frontend/src/components/PathyChatDrawer.jsx b/frontend/src/components/PathyChatDrawer.jsx
+index 19a9ec8..5d0c38b 100644
+--- a/frontend/src/components/PathyChatDrawer.jsx
++++ b/frontend/src/components/PathyChatDrawer.jsx
+@@ -1,7 +1,7 @@
+ import { useState, useRef, useEffect } from 'react';
+ 
+ export default function PathyChatDrawer({ isOpen, onClose, initialMessage, sessionData, setSessionData }) {
+-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
++  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
+   const name = sessionData?.user_name || 'Teman';
+   const projectName = sessionData?.project?.name || 'proyek portofolio-mu';
+   const lang = localStorage.getItem('pref_lang') || 'id';
+diff --git a/frontend/src/components/SaveSheet.jsx b/frontend/src/components/SaveSheet.jsx
+index eb8ceb0..7bcbbca 100644
+--- a/frontend/src/components/SaveSheet.jsx
++++ b/frontend/src/components/SaveSheet.jsx
+@@ -13,7 +13,7 @@ export default function SaveSheet() {
+   const lang = localStorage.getItem('pref_lang') || 'id';
+   const isEn = lang === 'en';
+ 
+-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
++  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
+ 
+   useEffect(() => {
+     const openSheet = () => {
+@@ -88,15 +88,19 @@ export default function SaveSheet() {
+ 
+   const handleGoogleSubmit = async () => {
+     try {
+-      const { supabase } = await import('../utils/supabase');
+-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
++      const { isAuthBypassEnabled, supabase, syncSessionDataToSupabase } = await import('../utils/supabase');
++      if (!supabase) {
++        toast.error(isEn ? "Authentication is not configured in this deployment yet." : "Autentikasi belum dikonfigurasi di deployment ini.");
++        return;
++      }
+       
+-      if (isSimulated) {
++      if (isAuthBypassEnabled) {
+         sessionStorage.setItem('logged_in', 'true');
+         localStorage.setItem('pathy_logged_in', 'true');
+         localStorage.setItem('pathy_user_name', userName || (isEn ? 'Guest' : 'Tamu'));
+         localStorage.setItem('pathy_user_email', 'guest@pathfinder.com');
+         localStorage.setItem('pathy_shuffles_left', '3');
++        if (sessionData) await syncSessionDataToSupabase(sessionData);
+         toast.success(isEn ? "Successfully signed in with Google (Virtual Mode)!" : "Berhasil masuk dengan Google (Virtual Mode)!");
+         closeSheet();
+         setTimeout(() => {
+@@ -134,11 +138,6 @@ export default function SaveSheet() {
+     } catch (err) {
+       console.error(err);
+       toast.error((isEn ? 'Login failed: ' : 'Login gagal: ') + err.message);
+-      // Fallback
+-      sessionStorage.setItem('logged_in', 'true');
+-      toast.success(isEn ? "Entered as guest!" : "Masuk sebagai tamu tersaring!");
+-      closeSheet();
+-      window.location.reload();
+     }
+   };
+ 
+@@ -147,10 +146,13 @@ export default function SaveSheet() {
+     if (!email) return;
+ 
+     try {
+-      const { supabase } = await import('../utils/supabase');
+-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
++      const { isAuthBypassEnabled, supabase, syncSessionDataToSupabase } = await import('../utils/supabase');
++      if (!supabase) {
++        toast.error(isEn ? "Authentication is not configured in this deployment yet." : "Autentikasi belum dikonfigurasi di deployment ini.");
++        return;
++      }
+       
+-      if (isSimulated) {
++      if (isAuthBypassEnabled) {
+         sessionStorage.setItem('logged_in', 'true');
+         localStorage.setItem('pathy_logged_in', 'true');
+         localStorage.setItem('pathy_user_email', email);
+@@ -158,6 +160,7 @@ export default function SaveSheet() {
+         const capitalized = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+         localStorage.setItem('pathy_user_name', capitalized);
+         localStorage.setItem('pathy_shuffles_left', '3');
++        if (sessionData) await syncSessionDataToSupabase(sessionData);
+         
+         toast.success(isEn ? `Successfully signed in as ${email} (Virtual Mode)!` : `Berhasil masuk sebagai ${email} (Virtual Mode)!`);
+         closeSheet();
+@@ -182,11 +185,6 @@ export default function SaveSheet() {
+     } catch (err) {
+       console.error(err);
+       toast.error((isEn ? 'Failed to send email: ' : 'Gagal mengirim email: ') + err.message);
+-      // Fallback
+-      sessionStorage.setItem('logged_in', 'true');
+-      toast.success(isEn ? `Entered with email: ${email}` : `Masuk dengan email: ${email}`);
+-      closeSheet();
+-      window.location.reload();
+     }
+   };
+ 
+@@ -281,11 +279,9 @@ export default function SaveSheet() {
+                   <button 
+                     onClick={async () => {
+                       try {
+-                        const { supabase } = await import('../utils/supabase');
+-                        if (supabase && supabase.auth) await supabase.auth.signOut();
++                        const { signOutPathfinder } = await import('../utils/supabase');
++                        await signOutPathfinder();
+                       } catch(e) {}
+-                      sessionStorage.removeItem('logged_in');
+-                      localStorage.removeItem('pathy_logged_in');
+                       toast.success(isEn ? "Successfully logged out from account session." : "Berhasil keluar dari sesi akun.");
+                       closeSheet();
+                       setTimeout(() => {
+diff --git a/frontend/src/screens/AuthCallbackScreen.jsx b/frontend/src/screens/AuthCallbackScreen.jsx
+index 25e1569..7d4732b 100644
+--- a/frontend/src/screens/AuthCallbackScreen.jsx
++++ b/frontend/src/screens/AuthCallbackScreen.jsx
+@@ -5,15 +5,40 @@ export default function AuthCallbackScreen() {
+   const [errorStatus, setErrorStatus] = useState(false);
+ 
+   useEffect(() => {
++    if (!supabase?.auth) {
++      setErrorStatus(true);
++      return undefined;
++    }
++
++    const completeAuth = (session) => {
++      if (!session) return;
++      sessionStorage.setItem('logged_in', 'true');
++      localStorage.setItem('pathy_shuffles_left', '3');
++
++      if (window.opener) {
++        window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, window.location.origin);
++        setTimeout(() => window.close(), 120);
++      } else {
++        window.location.href = '/results';
++      }
++    };
++
++    const code = new URLSearchParams(window.location.search).get('code');
++    if (code && supabase.auth.exchangeCodeForSession) {
++      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
++        if (error) {
++          console.error("Auth exchange error:", error);
++          setErrorStatus(true);
++          return;
++        }
++        completeAuth(data?.session);
++      });
++    }
++
+     // Attempt to get the session after redirect
+     supabase.auth.getSession().then(({ data: { session }, error }) => {
+       if (session) {
+-        if (window.opener) {
+-          window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, window.location.origin);
+-          setTimeout(() => window.close(), 100);
+-        } else {
+-          window.location.href = '/results';
+-        }
++        completeAuth(session);
+       } else if (error) {
+         console.error("AuthCallback Error:", error);
+         setErrorStatus(true);
+@@ -23,12 +48,7 @@ export default function AuthCallbackScreen() {
+     // Listen for auth state change to capture the flow as tokens are processed
+     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+       if (session) {
+-        if (window.opener) {
+-          window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, window.location.origin);
+-          setTimeout(() => window.close(), 100);
+-        } else {
+-          window.location.href = '/results';
+-        }
++        completeAuth(session);
+       }
+     });
+ 
+diff --git a/frontend/src/screens/ConversationScreen.jsx b/frontend/src/screens/ConversationScreen.jsx
+index c9d2b0b..225f55b 100644
+--- a/frontend/src/screens/ConversationScreen.jsx
++++ b/frontend/src/screens/ConversationScreen.jsx
+@@ -9,20 +9,20 @@ const INITIAL_QUESTIONS = [
+     tip: "Cukup nama panggilan, biar Pathy bisa manggil kamu dengan enak dan lebih personal."
+   },
+   {
+-    title: "Ceritain proyek IT atau tech yang pernah kamu buat, dan paling kamu banggakan — walau kecil.",
+-    tip: "Nggak harus proyek \"keren\". Bisa website sederhana, script data, atau desain UI Figma tugas kuliah. Yang penting kamu pernah ngerjain sampai jadi."
++    title: "Ceritain satu bukti kerja digital/IT yang pernah kamu buat atau bantu selesaikan.",
++    tip: "Sebutkan konteks, tools, dan hasilnya. Contoh: dashboard Excel, website React, desain Figma, bot, API, CTF, atau tugas kampus yang benar-benar selesai."
+   },
+   {
+     title: "Menyiapkan pertanyaan...",
+     tip: "Pathy sedang memikirkan pertanyaan berdasarkan ceritamu."
+   },
+   {
+-    title: "Di mana kamu mau kerja — (Jakarta, Bandung, Remote), atau belum tahu?",
+-    tip: "Pathy akan pull lowongan tech jobs live dari lokasi ini. Kalau belum tahu, pilih Jakarta — ekosistem startup paling padat."
++    title: "Lokasi kerja idealmu apa, dan seberapa fleksibel kamu untuk remote/hybrid?",
++    tip: "Jawaban ini dipakai untuk mencocokkan strategi lamaran. Contoh: Jakarta hybrid, Bandung onsite, Remote Indonesia, atau mana saja asal role-nya cocok."
+   },
+   {
+-    title: "Berapa lama lagi kamu targetkan bisa magang atau mulai kerja di tech?",
+-    tip: "Jujur aja. Ini buat atur prioritas rencana persiapanmu — kita kejar bareng supaya siap."
++    title: "Kapan targetmu siap melamar, dan apa batasan terbesarmu sekarang?",
++    tip: "Contoh batasan: belum punya portfolio, belum pede interview, masih kuliah, laptop terbatas, English, atau belum tahu role yang paling cocok."
+   }
+ ];
+ 
+@@ -32,20 +32,20 @@ const EN_INITIAL_QUESTIONS = [
+     tip: "Just your nickname is fine, so Pathy can address you personally and comfortably."
+   },
+   {
+-    title: "Tell me about an IT or tech project you've built that you're most proud of—even if small.",
+-    tip: "It doesn't have to be complex. A simple website, a spreadsheet utility, a game, or a Figma design. What matters is you built it."
++    title: "Tell me about one concrete digital/IT proof of work you built or helped finish.",
++    tip: "Mention the context, tools, and outcome. Examples: Excel dashboard, React site, Figma flow, bot, API, CTF write-up, or a completed class project."
+   },
+   {
+     title: "Preparing question...",
+     tip: "Pathy is thinking of a customized question based on your project description."
+   },
+   {
+-    title: "Where would you like to work—(Jakarta, Bandung, Remote), or not sure yet?",
+-    tip: "Pathy will query live job boards for this location. If unsure, type Jakarta—the densest startup cluster."
++    title: "What is your ideal work location, and how flexible are you with remote/hybrid work?",
++    tip: "This shapes the application strategy. Example: Jakarta hybrid, Bandung onsite, Remote Indonesia, or anywhere if the role is a strong match."
+   },
+   {
+-    title: "When do you target to start an internship or job in tech?",
+-    tip: "Be honest. This helps us customize your preparation timeline so you can succeed sooner."
++    title: "When do you want to be ready to apply, and what is your biggest blocker right now?",
++    tip: "Examples: no portfolio yet, interview confidence, still in college, limited laptop, English, or not sure which role fits best."
+   }
+ ];
+ 
+@@ -53,6 +53,8 @@ const STEP_SUGGESTIONS = {
+   1: [
+     "Pernah bikin website portofolio simple pakai HTML, CSS, JavaScript",
+     "Saya pernah bikin aplikasi kasir sederhana pakai Python / Java",
++    "Saya bikin dashboard Excel/Looker untuk merapikan data penjualan dan menemukan produk paling laku",
++    "Saya bantu tim kampus membuat landing page acara, dari layout sampai deploy",
+     "Dulu sempat bikin REST API sederhana pakai Express dan Node.js",
+     "Pernah bikin bot Discord / Telegram sederhana buat server temen",
+     "Pernah nyoba clone UI aplikasi (Instagram/Twitter) pakai React/Flutter",
+@@ -90,13 +92,15 @@ const STEP_SUGGESTIONS = {
+     "Sering kelupaan waktu kalau dapet task belajar framework / AI baru"
+   ],
+   3: ["Jakarta", "Bandung", "Surabaya", "Yogyakarta", "Semarang", "Malang", "Bali", "Batam", "Remote", "Luar Negeri", "Mana aja asal perusahaannya cocok"],
+-  4: ["Secepatnya bulan ini", "Kira-kira 1-3 bulan lagi", "Semester depan", "Lulusnya masih tahun depan", "Lagi nggak buru-buru, cuma mau mulai prepare dulu aja"]
++  4: ["Siap melamar bulan ini, blocker utama portfolio belum rapi", "Kira-kira 1-3 bulan lagi, masih perlu latihan interview", "Semester depan, sekarang masih padat kuliah", "Lulusnya masih tahun depan, ingin bangun portfolio dari sekarang", "Belum buru-buru, masih mencari role paling cocok"]
+ };
+ 
+ const EN_STEP_SUGGESTIONS = {
+   1: [
+     "Built a simple portfolio layout using HTML, CSS, JavaScript",
+     "Wrote a simple cashier application with Python / Java",
++    "Built an Excel/Looker dashboard to clean sales data and identify top products",
++    "Helped a campus team ship an event landing page from layout to deployment",
+     "Developed a basic REST API using Express and Node.js",
+     "Coded a Discord or Telegram bot for a friend's community server",
+     "Tried cloning an app's UI layout (like Instagram) with React or Flutter",
+@@ -134,7 +138,7 @@ const EN_STEP_SUGGESTIONS = {
+     "Instantly lose track of hours when studying a brand-new framework"
+   ],
+   3: ["Jakarta", "Bandung", "Surabaya", "Yogyakarta", "Remote", "Overseas", "Anywhere matching targets"],
+-  4: ["Immediately this month", "Within 1-3 months", "Next semester", "Graduating next year", "No rush, just starting to prepare"]
++  4: ["Ready to apply this month, main blocker is portfolio polish", "Within 1-3 months, still need interview practice", "Next semester, current blocker is college workload", "Graduating next year, want to build portfolio now", "No rush, still exploring the best-fit role"]
+ };
+ 
+ // Helper for smarter suggestion filtering
+diff --git a/frontend/src/screens/LoadingScreen.jsx b/frontend/src/screens/LoadingScreen.jsx
+index 6396589..31ab892 100644
+--- a/frontend/src/screens/LoadingScreen.jsx
++++ b/frontend/src/screens/LoadingScreen.jsx
+@@ -134,9 +134,11 @@ export default function LoadingScreen() {
+         const { resultPromise, sessionId } = await startAnalysis(answers, lang);
+         if (resultPromise) {
+           const data = await resultPromise;
++          const enrichedData = { ...data, session_id: sessionId };
++          sessionStorage.setItem('pathfinder_session_id', sessionId);
+           sessionStorage.setItem('pathfinder_session', JSON.stringify({
+             session_id: sessionId,
+-            results: data,
++            results: enrichedData,
+             timestamp: Date.now()
+           }));
+           localStorage.setItem('pathy_shuffles_left', '3');
+@@ -149,6 +151,7 @@ export default function LoadingScreen() {
+         sessionStorage.setItem('pathfinder_session', JSON.stringify({
+           session_id: 'error_fallback',
+           results: {
++            session_id: 'error_fallback',
+             user_name: localStorage.getItem('pathy_user_name') || "Teman",
+             readiness_score: 55,
+             top_roles: [
+diff --git a/frontend/src/screens/LoginScreen.jsx b/frontend/src/screens/LoginScreen.jsx
+index 9d5fa3f..86534ad 100644
+--- a/frontend/src/screens/LoginScreen.jsx
++++ b/frontend/src/screens/LoginScreen.jsx
+@@ -1,5 +1,5 @@
+ import { useNavigate } from 'react-router-dom';
+-import { supabase } from '../utils/supabase';
++import { hasAnalysisHistory, isAuthBypassEnabled, supabase, syncSessionDataToSupabase } from '../utils/supabase';
+ import { toast } from 'sonner';
+ import { useState, useEffect } from 'react';
+ 
+@@ -11,6 +11,37 @@ export default function LoginScreen() {
+   const lang = localStorage.getItem('pref_lang') || 'id';
+   const isEn = lang === 'en';
+ 
++  const finishAuthenticatedFlow = async () => {
++    const cachedSession = JSON.parse(sessionStorage.getItem('pathfinder_session') || 'null');
++    const transferredSession = JSON.parse(localStorage.getItem('pathfinder_session_transfer') || 'null');
++    const activeSession = cachedSession?.results ? cachedSession : transferredSession;
++
++    sessionStorage.setItem('logged_in', 'true');
++    localStorage.setItem('pathy_shuffles_left', '3');
++
++    if (activeSession?.results) {
++      sessionStorage.setItem('pathfinder_session', JSON.stringify(activeSession));
++      await syncSessionDataToSupabase(activeSession.results);
++      localStorage.removeItem('pathfinder_session_transfer');
++      toast.success(isEn ? "Signed in and saved your current analysis." : "Berhasil masuk dan menyimpan hasil analisismu.");
++      navigate('/results');
++      return;
++    }
++
++    const hasHistory = await hasAnalysisHistory();
++    if (hasHistory) {
++      toast.success(isEn ? "Welcome back. Loading your latest analysis." : "Selamat datang kembali. Memuat analisis terakhirmu.");
++      navigate('/results');
++      return;
++    }
++
++    await supabase?.auth?.signOut();
++    sessionStorage.removeItem('logged_in');
++    localStorage.removeItem('pathy_logged_in');
++    toast.error(isEn ? "Please complete the career interview first so PathFinder has a profile to save." : "Silakan selesaikan interview karir dulu supaya PathFinder punya profil yang bisa disimpan.");
++    navigate('/conversation');
++  };
++
+   useEffect(() => {
+     const handleOAuthMessage = async (event) => {
+       if (event.origin !== window.location.origin) return;
+@@ -18,46 +49,13 @@ export default function LoginScreen() {
+       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+         setIsLoadingGoogle(true);
+         if (supabase) {
+-          try {
+-            const { data: { session } } = await supabase.auth.getSession();
+-            if (session) {
+-              const { data, error } = await supabase
+-                .from('analyses')
+-                .select('id')
+-                .eq('user_id', session.user.id)
+-                .limit(1)
+-                .maybeSingle();
+-
+-              if (error) {
+-                console.error("Error checking user analysis:", error);
+-              }
+-
+-              if (error || !data) {
+-                await supabase.auth.signOut();
+-                sessionStorage.removeItem('logged_in');
+-                toast.error(isEn ? "This Google account does not have a profiling history yet. Please complete the career interview on the home page first." : "Akun Google ini belum memiliki riwayat analisis. Silakan ikuti onboarding/analisis terlebih dahulu di halaman utama sebelum mendaftar.");
+-                setIsLoadingGoogle(false);
+-                return;
+-              }
+-
+-              sessionStorage.setItem('logged_in', 'true');
+-              localStorage.setItem('pathy_shuffles_left', '3');
+-              toast.success(isEn ? "Successfully signed in with Google!" : "Berhasil masuk dengan akun Google!");
+-              setIsLoadingGoogle(false);
+-              navigate('/results');
+-              return;
+-            }
+-          } catch (err) {
+-            console.error("Auth redirect error checks", err);
+-          }
++          await finishAuthenticatedFlow();
++          setIsLoadingGoogle(false);
++          return;
+         }
+-        
+-        // Default fallback if session check failed or supabase is not active
+-        sessionStorage.setItem('logged_in', 'true');
+-        localStorage.setItem('pathy_shuffles_left', '3');
+-        toast.success(isEn ? "Successfully signed in!" : "Berhasil masuk!");
++
++        toast.error(isEn ? "Authentication is unavailable in this environment." : "Autentikasi tidak tersedia di environment ini.");
+         setIsLoadingGoogle(false);
+-        navigate('/results');
+       }
+     };
+ 
+@@ -74,10 +72,7 @@ export default function LoginScreen() {
+ 
+     try {
+       setIsLoadingGoogle(true);
+-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+-      const isPreviewUrl = window.location.hostname.includes('run.app') || window.location.hostname.includes('googleusercontent');
+-      
+-      if (isSimulated || isPreviewUrl) {
++      if (isAuthBypassEnabled) {
+         // Fast direct path for virtual sandbox or preview environments lacking valid redirect configs
+         sessionStorage.setItem('logged_in', 'true');
+         localStorage.setItem('pathy_logged_in', 'true');
+@@ -87,7 +82,7 @@ export default function LoginScreen() {
+         toast.success(isEn ? "Successfully signed in with Google (Preview Bypass)!" : "Berhasil masuk dengan akun Google (Bypass Preview)!");
+         setIsLoadingGoogle(false);
+         setTimeout(() => {
+-          navigate('/results');
++          finishAuthenticatedFlow();
+         }, 600);
+         return;
+       }
+@@ -138,10 +133,7 @@ export default function LoginScreen() {
+ 
+     try {
+       setIsLoadingMagic(true);
+-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+-      const isPreviewUrl = window.location.hostname.includes('run.app') || window.location.hostname.includes('googleusercontent');
+-      
+-      if (isSimulated || isPreviewUrl) {
++      if (isAuthBypassEnabled) {
+         // Fast direct login for virtual magic link
+         sessionStorage.setItem('logged_in', 'true');
+         localStorage.setItem('pathy_logged_in', 'true');
+@@ -152,7 +144,7 @@ export default function LoginScreen() {
+         
+         toast.success(isEn ? `Preview Bypass: Logged in automatically as ${email}!` : `Bypass Preview: Otomatis masuk sebagai ${email}!`);
+         setTimeout(() => {
+-          navigate('/results');
++          finishAuthenticatedFlow();
+         }, 800);
+         return;
+       }
+diff --git a/frontend/src/screens/ProjectWorkspaceScreen.jsx b/frontend/src/screens/ProjectWorkspaceScreen.jsx
+index edcd45d..d2da9e7 100644
+--- a/frontend/src/screens/ProjectWorkspaceScreen.jsx
++++ b/frontend/src/screens/ProjectWorkspaceScreen.jsx
+@@ -153,7 +153,7 @@ const ALTERNATIVE_PROJECTS = {
+ 
+ export default function ProjectWorkspaceScreen() {
+   const navigate = useNavigate();
+-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
++  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
+   const lang = localStorage.getItem('pref_lang') || 'id';
+   const isEn = lang === 'en';
+   const [chatOpen, setChatOpen] = useState(false);
+@@ -381,6 +381,10 @@ export default function ProjectWorkspaceScreen() {
+               project: row.project_recommendation || row.project || {},
+               visual_roadmap: row.visual_roadmap || [],
+               jobs_analyzed: row.jobs_analyzed || 0,
++              jobs_source: row.jobs_source || null,
++              is_live: typeof row.is_live === 'boolean' ? row.is_live : false,
++              fetched_at: row.fetched_at || null,
++              job_data_snapshot: row.job_data_snapshot || null,
+               live_jobs: row.live_jobs || []
+             };
+             
+@@ -443,6 +447,14 @@ export default function ProjectWorkspaceScreen() {
+     setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+   };
+ 
++  const handleLogout = async () => {
++    const { signOutPathfinder } = await import('../utils/supabase');
++    await signOutPathfinder();
++    const { toast } = await import('sonner');
++    toast.success(isEn ? "Signed out. Your local project progress remains on this device." : "Berhasil keluar. Progress proyek lokal tetap tersimpan di perangkat ini.");
++    window.location.href = '/';
++  };
++
+   const progress = tasks.length > 0 ? Math.round((tasks.filter(t => t.done).length / tasks.length) * 100) : 0;
+ 
+   if (isLoading) {
+@@ -491,16 +503,9 @@ export default function ProjectWorkspaceScreen() {
+           <div className="absolute bottom-10 left-10 md:bottom-2 md:left-12 bg-ink text-white text-[11px] py-2.5 px-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity whitespace-nowrap border border-ink-3 flex flex-col gap-1.5 z-40 shadow-lg">
+             <span className="font-mono text-[9px] text-white/55 uppercase tracking-wider block">{isEn ? "Session Status" : "Kondisi Sesi"}</span>
+             <span className="font-semibold text-white">{data.user_name} ({isLoggedIn ? (isEn ? 'Active Account' : 'Akun Aktif') : (isEn ? 'Guest Session' : 'Sesi Tamu')})</span>
+-            {isLoggedIn ? (
+-              <button 
+-                onClick={async () => {
+-                  try {
+-                    const { supabase } = await import('../utils/supabase');
+-                    if (supabase) await supabase.auth.signOut();
+-                  } catch(e) {}
+-                  sessionStorage.removeItem('logged_in'); 
+-                  window.location.href='/'; 
+-                }}
++	            {isLoggedIn ? (
++	              <button 
++	                onClick={handleLogout}
+                 className="bg-transparent border-0 text-orange font-medium text-left p-0 cursor-pointer hover:underline mt-0.5"
+               >
+                 {isEn ? "Sign Out" : "Keluar Akun"}
+@@ -703,6 +708,15 @@ export default function ProjectWorkspaceScreen() {
+               </div>
+ 
+               <div className="pt-4 border-t border-dashed border-border flex flex-col gap-2.5">
++                {isLoggedIn && (
++                  <button 
++                    onClick={handleLogout}
++                    className="w-full bg-white border border-border text-ink rounded-xl py-3 text-[13.5px] font-medium hover:bg-cream transition-colors cursor-pointer text-center"
++                  >
++                    {isEn ? "Log Out" : "Keluar Akun"}
++                  </button>
++                )}
++
+                 <button 
+                   onClick={() => {
+                     const confirmReset = window.confirm(isEn ? "Are you sure you want to restart onboarding? Your career analytics history will be erased." : "Apakah kamu yakin ingin mengulang onboarding? Riwayat analisis karir lokal kamu akan dihapus.");
+diff --git a/frontend/src/screens/ResultsScreen.jsx b/frontend/src/screens/ResultsScreen.jsx
+index a234e4d..efa920d 100644
+--- a/frontend/src/screens/ResultsScreen.jsx
++++ b/frontend/src/screens/ResultsScreen.jsx
+@@ -210,7 +210,7 @@ export default function ResultsScreen() {
+   const [mentorStyle, setMentorStyle] = useState('profesional');
+ 
+   const navigate = useNavigate();
+-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
++  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
+ 
+   const [shufflesLeft, setShufflesLeft] = useState(parseInt(localStorage.getItem('pathy_shuffles_left') ?? '3', 10));
+ 
+@@ -413,6 +413,34 @@ export default function ResultsScreen() {
+     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   };
+ 
++  const handleExportReport = async () => {
++    const payload = {
++      exported_at: new Date().toISOString(),
++      source: 'PathFinder AI',
++      report: data,
++    };
++    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
++    const url = URL.createObjectURL(blob);
++    const link = document.createElement('a');
++    link.href = url;
++    link.download = `pathfinder-report-${(data.user_name || 'user').toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.json`;
++    document.body.appendChild(link);
++    link.click();
++    link.remove();
++    URL.revokeObjectURL(url);
++
++    const { toast } = await import('sonner');
++    toast.success(isEn ? "Report exported as JSON." : "Laporan berhasil diekspor sebagai JSON.");
++  };
++
++  const handleLogout = async () => {
++    const { signOutPathfinder } = await import('../utils/supabase');
++    await signOutPathfinder();
++    const { toast } = await import('sonner');
++    toast.success(isEn ? "Signed out. Your local analysis remains on this device." : "Berhasil keluar. Analisis lokal tetap tersimpan di perangkat ini.");
++    window.location.href = '/';
++  };
++
+   return (
+     <div className="min-h-screen bg-cream flex flex-col md:flex-row font-sans">
+       <aside className="w-full md:w-[70px] bg-ink text-white flex flex-row md:flex-col items-center py-3 md:py-[22px] px-4 md:px-0 shrink-0 border-b md:border-b-0 border-ink-3">
+@@ -458,16 +486,9 @@ export default function ResultsScreen() {
+               {isEn ? "Session Status" : "Kondisi Sesi"}
+             </span>
+             <span className="font-semibold text-white">{data.user_name} ({isLoggedIn ? (isEn ? 'Active Account' : 'Akun Aktif') : (isEn ? 'Guest Session' : 'Sesi Tamu')})</span>
+-            {isLoggedIn ? (
+-              <button 
+-                onClick={async () => {
+-                  try {
+-                    const { supabase } = await import('../utils/supabase');
+-                    if (supabase) await supabase.auth.signOut();
+-                  } catch(e) {}
+-                  sessionStorage.removeItem('logged_in'); 
+-                  window.location.href='/'; 
+-                }}
++	            {isLoggedIn ? (
++	              <button 
++	                onClick={handleLogout}
+                 className="bg-transparent border-0 text-orange font-medium text-left p-0 cursor-pointer hover:underline mt-0.5"
+               >
+                 {isEn ? "Sign Out" : "Keluar Akun"}
+@@ -517,7 +538,7 @@ export default function ResultsScreen() {
+               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+               {isEn ? "Email via Gmail" : "Kirim via Gmail"}
+             </button>
+-            <button className="bg-white border border-border rounded-full py-[9px] px-4 text-[13px] text-ink inline-flex items-center gap-2 hover:bg-cream-2 transition-colors cursor-pointer">
++            <button onClick={handleExportReport} className="bg-white border border-border rounded-full py-[9px] px-4 text-[13px] text-ink inline-flex items-center gap-2 hover:bg-cream-2 transition-colors cursor-pointer">
+               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+               {isEn ? "Export" : "Ekspor"}
+             </button>
+@@ -992,9 +1013,18 @@ export default function ResultsScreen() {
+                 </select>
+               </div>
+ 
+-              <div className="pt-4 border-t border-dashed border-border flex flex-col gap-2.5">
+-                <button 
+-                  onClick={() => {
++	              <div className="pt-4 border-t border-dashed border-border flex flex-col gap-2.5">
++	                {isLoggedIn && (
++	                  <button 
++	                    onClick={handleLogout}
++	                    className="w-full bg-white border border-border text-ink rounded-xl py-3 text-[13.5px] font-medium hover:bg-cream transition-colors cursor-pointer text-center"
++	                  >
++	                    {isEn ? "Log Out" : "Keluar Akun"}
++	                  </button>
++	                )}
++
++	                <button 
++	                  onClick={() => {
+                     const confirmReset = window.confirm(isEn ? "Are you sure you want to restart onboarding? Your career analytics history will be erased." : "Apakah kamu yakin ingin mengulang onboarding? Riwayat analisis karir lokal kamu akan dihapus.");
+                     if (confirmReset) {
+                       sessionStorage.removeItem('pathfinder_session');
+diff --git a/frontend/src/utils/api.js b/frontend/src/utils/api.js
+index e198221..27e7409 100644
+--- a/frontend/src/utils/api.js
++++ b/frontend/src/utils/api.js
+@@ -1,11 +1,28 @@
+ import axios from 'axios';
+ 
+ const api = axios.create({
++  timeout: 15000,
+   headers: {
+     'Content-Type': 'application/json',
+   },
+ });
+ 
++const getApiErrorMessage = (err, isEn) => {
++  if (err?.response?.status === 429) {
++    return isEn
++      ? "PathFinder is receiving too many requests right now. Please wait a moment and try again."
++      : "PathFinder sedang menerima terlalu banyak request. Tunggu sebentar lalu coba lagi.";
++  }
++  if (err?.code === 'ECONNABORTED') {
++    return isEn
++      ? "The analysis took too long. Showing safe offline guidance for now."
++      : "Analisis terlalu lama. Untuk sementara PathFinder menampilkan panduan offline yang aman.";
++  }
++  return isEn
++    ? "PathFinder is in degraded mode. Showing offline guidance."
++    : "PathFinder sedang dalam mode terbatas. Menampilkan panduan offline.";
++};
++
+ export const getNextQuestion = async (index, prevAnswer, lang) => {
+   const activeLang = lang || localStorage.getItem('pref_lang') || 'id';
+   try {
+@@ -30,6 +47,7 @@ export const getNextQuestion = async (index, prevAnswer, lang) => {
+ 
+ export const analyzeProfile = async (answers, sessionId, lang) => {
+   const activeLang = lang || localStorage.getItem('pref_lang') || 'id';
++  const isEn = activeLang === 'en';
+   try {
+     const { data } = await api.post('/api/v1/analysis', {
+       answers,
+@@ -38,9 +56,10 @@ export const analyzeProfile = async (answers, sessionId, lang) => {
+     });
+     return data;
+   } catch (err) {
+-    // Mock response for preview / Network failure
++    const degradedMessage = getApiErrorMessage(err, isEn);
+     return {
+-      user_name: "Kamu",
++      session_id: sessionId,
++      user_name: answers?.[0] || (isEn ? "Friend" : "Kamu"),
+       readiness_score: 75,
+       top_roles: [
+         { rank: 1, role_name: "Junior Web Developer", role_id: "frontend_dev", fit_score: 75, skills_shown: ["HTML/CSS"], job_count: 12 },
+@@ -48,8 +67,8 @@ export const analyzeProfile = async (answers, sessionId, lang) => {
+       ],
+       signal_chips: ["suka ngulik", "problem solver"],
+       skill_gaps: [{ skill: "React Fundamentals", pct: 75 }],
+-      scout_message: "Pathy sedang dalam mode offline. Jangan khawatir, rekomendasi awal ini kami buat berdasarkan minat belajarmu secara umum. Coba muat ulang halaman ini untuk hasil yang terhubung langsung dengan AI.",
+-      follow_up_questions: ["Apa framework andalanmu saat ini?", "Tertarik belajar backend juga?"],
++      scout_message: degradedMessage,
++      follow_up_questions: isEn ? ["What should I build first?", "How do I make this portfolio-ready?"] : ["Apa yang sebaiknya aku bangun dulu?", "Gimana bikin ini siap jadi portfolio?"],
+       project: {
+         name: "Personal Portfolio Website",
+         dataset_name: "Your Profile Data",
+@@ -58,9 +77,11 @@ export const analyzeProfile = async (answers, sessionId, lang) => {
+       },
+       jobs_analyzed: 20,
+       jobs_source: "Offline Data",
++      is_live: false,
++      fetched_at: new Date().toISOString(),
+       live_jobs: [
+-        { title: "Junior Web Developer", company: "Tech Indo", location: "Jakarta", match: 75, type: "Full-time" },
+-        { title: "IT Support Staff", company: "Local Corp", location: "Bandung", match: 60, type: "Contract" }
++        { title: "Junior Web Developer", company: "Sample Tech Indo", location: "Jakarta", match: 75, type: "Full-time (Sample)", is_fallback: true },
++        { title: "IT Support Staff", company: "Sample Local Corp", location: "Bandung", match: 60, type: "Contract (Sample)", is_fallback: true }
+       ]
+     };
+   }
+@@ -75,7 +96,7 @@ export const saveResults = async (sessionId, userId, analysisData) => {
+     });
+     return data;
+   } catch (err) {
+-    return { saved: true, analysis_id: "mock" };
++    return { saved: false, analysis_id: null, error: "Save endpoint unavailable" };
+   }
+ };
+ 
+diff --git a/frontend/src/utils/supabase.js b/frontend/src/utils/supabase.js
+index 71ef8b8..53c559a 100644
+--- a/frontend/src/utils/supabase.js
++++ b/frontend/src/utils/supabase.js
+@@ -2,6 +2,14 @@ import { createClient } from '@supabase/supabase-js';
+ 
+ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
++const hasBrowser = typeof window !== 'undefined';
++const previewHost = hasBrowser && (
++  window.location.hostname.includes('googleusercontent') ||
++  window.location.hostname.includes('idx.dev')
++);
++const explicitAuthBypass =
++  import.meta.env.VITE_ENABLE_AUTH_BYPASS === 'true' ||
++  import.meta.env.VITE_PREVIEW_AUTH_BYPASS === 'true';
+ 
+ // Real client initialization if keys are present
+ const realSupabase = supabaseUrl && supabaseAnonKey 
+@@ -163,16 +171,65 @@ const simulatedSupabase = {
+ };
+ 
+ export const isSupabaseConfigured = Boolean(realSupabase);
+-export const supabase = realSupabase || (import.meta.env.MODE === 'production' || import.meta.env.PROD ? null : simulatedSupabase);
++export const isAuthBypassEnabled = !realSupabase && (previewHost || explicitAuthBypass || import.meta.env.DEV);
++export const supabase = realSupabase || (isAuthBypassEnabled ? simulatedSupabase : null);
++
++const getActiveSessionId = (sessionData = {}) => {
++  if (sessionData.session_id) return sessionData.session_id;
++
++  try {
++    const cached = JSON.parse(sessionStorage.getItem('pathfinder_session') || '{}');
++    if (cached.session_id) return cached.session_id;
++  } catch (err) {
++    console.warn("Could not read active session id", err);
++  }
++
++  const existing = sessionStorage.getItem('pathfinder_session_id');
++  if (existing) return existing;
++
++  const generated = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
++  sessionStorage.setItem('pathfinder_session_id', generated);
++  return generated;
++};
++
++const ensureUserProfile = async (user) => {
++  if (!realSupabase || !user?.id) return true;
++
++  const name =
++    user.user_metadata?.full_name ||
++    user.user_metadata?.name ||
++    localStorage.getItem('pathy_user_name') ||
++    (user.email ? user.email.split('@')[0] : 'PathFinder User');
++
++  const { error } = await realSupabase
++    .from('users')
++    .upsert({
++      id: user.id,
++      email: user.email || null,
++      name,
++      google_id: user.app_metadata?.provider === 'google' ? user.identities?.[0]?.id || null : null,
++      last_login: new Date().toISOString(),
++    }, { onConflict: 'id' });
++
++  if (error) {
++    console.warn("Could not ensure Supabase profile row.", error);
++    return false;
++  }
++
++  return true;
++};
+ 
+ export const saveResultToSupabase = async (sessionData) => {
+   if (!supabase) return false;
+   try {
+     const { data: { user } } = await supabase.auth.getUser();
+     if (!user) return false;
++    await ensureUserProfile(user);
+ 
+     const currentLang = localStorage.getItem('pref_lang') || 'id';
+-    const finalSessionId = sessionData.session_id || 'local_session_' + Date.now();
++    const finalSessionId = getActiveSessionId(sessionData);
++    sessionStorage.setItem('pathfinder_session_id', finalSessionId);
++    const isLive = sessionData.is_live === true;
+ 
+     const { error } = await supabase
+       .from('analyses')
+@@ -191,13 +248,13 @@ export const saveResultToSupabase = async (sessionData) => {
+         live_jobs: sessionData.live_jobs || [],
+         visual_roadmap: sessionData.visual_roadmap || [],
+         jobs_source: sessionData.jobs_source || null,
+-        is_live: Boolean(sessionData.is_live),
++        is_live: isLive,
+         fetched_at: sessionData.fetched_at || new Date().toISOString(),
+         job_data_snapshot: {
+           jobs_source: sessionData.jobs_source || null,
+-          is_live: Boolean(sessionData.is_live),
++          is_live: isLive,
+           fetched_at: sessionData.fetched_at || null,
+-          fallback_used: sessionData.is_live === false
++          fallback_used: !isLive
+         },
+         location: sessionData.location || 'Indonesia',
+         lang: currentLang,
+@@ -214,6 +271,8 @@ export const saveResultToSupabase = async (sessionData) => {
+   }
+ };
+ 
++export const syncSessionDataToSupabase = saveResultToSupabase;
++
+ export const getLatestResultFromSupabase = async () => {
+   if (!supabase) return null;
+   try {
+@@ -246,3 +305,41 @@ export const getLatestResultFromSupabase = async () => {
+     return null;
+   }
+ };
++
++export const hasAnalysisHistory = async () => {
++  if (!supabase) return false;
++  try {
++    const { data: { user } } = await supabase.auth.getUser();
++    if (!user) return false;
++
++    const { data, error } = await supabase
++      .from('analyses')
++      .select('id')
++      .eq('user_id', user.id)
++      .limit(1)
++      .maybeSingle();
++
++    if (error) {
++      console.warn("Could not check analysis history.", error);
++      return false;
++    }
++
++    return Boolean(data);
++  } catch (err) {
++    console.error("Analysis history check failed", err);
++    return false;
++  }
++};
++
++export const signOutPathfinder = async () => {
++  try {
++    if (supabase?.auth) await supabase.auth.signOut();
++  } catch (err) {
++    console.warn("Supabase sign out failed", err);
++  }
++
++  sessionStorage.removeItem('logged_in');
++  localStorage.removeItem('pathy_logged_in');
++  localStorage.removeItem('pathy_user_email');
++  localStorage.removeItem('pathy_user_name');
++};
+diff --git a/package-lock.json b/package-lock.json
+index fbe6e6b..dd77bdd 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -16,14 +16,17 @@
+         "axios": "^1.16.1",
+         "dotenv": "^17.2.3",
+         "express": "^4.21.2",
++        "express-rate-limit": "^8.5.2",
+         "firebase": "^12.13.0",
++        "helmet": "^8.2.0",
+         "lucide-react": "^0.546.0",
+         "motion": "^12.23.24",
+         "react": "^19.0.1",
+         "react-dom": "^19.0.1",
+         "react-router-dom": "^7.15.1",
+         "sonner": "^2.0.7",
+-        "vite": "^6.2.3"
++        "vite": "^6.2.3",
++        "zod": "^4.4.3"
+       },
+       "devDependencies": {
+         "@types/express": "^4.17.21",
+@@ -3065,6 +3068,24 @@
+         "url": "https://opencollective.com/express"
+       }
+     },
++    "node_modules/express-rate-limit": {
++      "version": "8.5.2",
++      "resolved": "https://registry.npmjs.org/express-rate-limit/-/express-rate-limit-8.5.2.tgz",
++      "integrity": "sha512-5Kb34ipNX694DH48vN9irak1Qx30nb0PLYHXfJgw4YEjiC3ZEmZJhwOp+VfiCYwFzvFTdB9QkArYS5kXa2cx2A==",
++      "license": "MIT",
++      "dependencies": {
++        "ip-address": "^10.2.0"
++      },
++      "engines": {
++        "node": ">= 16"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/express-rate-limit"
++      },
++      "peerDependencies": {
++        "express": ">= 4.11"
++      }
++    },
+     "node_modules/express/node_modules/debug": {
+       "version": "2.6.9",
+       "resolved": "https://registry.npmjs.org/debug/-/debug-2.6.9.tgz",
+@@ -3503,6 +3524,18 @@
+         "node": ">= 0.4"
+       }
+     },
++    "node_modules/helmet": {
++      "version": "8.2.0",
++      "resolved": "https://registry.npmjs.org/helmet/-/helmet-8.2.0.tgz",
++      "integrity": "sha512-DRgTIUgnWcJ62KyarxxziuqYxKGnR6Rgg19BlbucN/dpmJbl1XOit6qvoOX0ZT+HhWe5OUVhU/a1zpGyc1xA0Q==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18.0.0"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/EvanHahn"
++      }
++    },
+     "node_modules/http-errors": {
+       "version": "2.0.1",
+       "resolved": "https://registry.npmjs.org/http-errors/-/http-errors-2.0.1.tgz",
+@@ -3575,6 +3608,15 @@
+       "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
+       "license": "ISC"
+     },
++    "node_modules/ip-address": {
++      "version": "10.2.0",
++      "resolved": "https://registry.npmjs.org/ip-address/-/ip-address-10.2.0.tgz",
++      "integrity": "sha512-/+S6j4E9AHvW9SWMSEY9Xfy66O5PWvVEJ08O0y5JGyEKQpojb0K0GKpz/v5HJ/G0vi3D2sjGK78119oXZeE0qA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 12"
++      }
++    },
+     "node_modules/ipaddr.js": {
+       "version": "1.9.1",
+       "resolved": "https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-1.9.1.tgz",
+@@ -5514,6 +5556,15 @@
+       "engines": {
+         "node": ">=12"
+       }
++    },
++    "node_modules/zod": {
++      "version": "4.4.3",
++      "resolved": "https://registry.npmjs.org/zod/-/zod-4.4.3.tgz",
++      "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==",
++      "license": "MIT",
++      "funding": {
++        "url": "https://github.com/sponsors/colinhacks"
++      }
+     }
+   }
+ }
+diff --git a/package.json b/package.json
+index 8a48850..17e688d 100644
+--- a/package.json
++++ b/package.json
+@@ -20,14 +20,17 @@
+     "axios": "^1.16.1",
+     "dotenv": "^17.2.3",
+     "express": "^4.21.2",
++    "express-rate-limit": "^8.5.2",
+     "firebase": "^12.13.0",
++    "helmet": "^8.2.0",
+     "lucide-react": "^0.546.0",
+     "motion": "^12.23.24",
+     "react": "^19.0.1",
+     "react-dom": "^19.0.1",
+     "react-router-dom": "^7.15.1",
+     "sonner": "^2.0.7",
+-    "vite": "^6.2.3"
++    "vite": "^6.2.3",
++    "zod": "^4.4.3"
+   },
+   "devDependencies": {
+     "@types/express": "^4.17.21",
+diff --git a/server.ts b/server.ts
+index 1bb015d..9bc43df 100644
+--- a/server.ts
++++ b/server.ts
+@@ -4,10 +4,127 @@ import { createServer as createViteServer } from "vite";
+ import fs from "fs";
+ import { GoogleGenAI } from "@google/genai";
+ import dotenv from "dotenv";
++import helmet from "helmet";
++import rateLimit from "express-rate-limit";
++import { z } from "zod";
++import crypto from "crypto";
+ 
+ dotenv.config();
+ 
+ let ai = null;
++const providerCooldownUntil: Record<string, number> = {};
++const analysisCache = new Map<string, { expiresAt: number; value: any }>();
++const CACHE_TTL_MS = parseInt(process.env.ANALYSIS_CACHE_TTL_MS || `${1000 * 60 * 30}`, 10);
++const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || "9000", 10);
++
++const conversationSchema = z.object({
++  question_index: z.number().int().min(0).max(10),
++  previous_answer: z.string().trim().max(1600).default(""),
++  lang: z.enum(["id", "en"]).default("id"),
++});
++
++const analysisSchema = z.object({
++  answers: z.array(z.string().trim().max(1200)).min(5).max(5),
++  session_id: z.string().trim().min(3).max(120).regex(/^[a-zA-Z0-9._:-]+$/),
++  lang: z.enum(["id", "en"]).default("id"),
++});
++
++const chatSchema = z.object({
++  message: z.string().trim().min(1).max(1200),
++  sessionData: z.unknown().optional(),
++  lang: z.enum(["id", "en"]).default("id"),
++  mentorStyle: z.enum(["profesional", "santai"]).default("santai"),
++});
++
++function nowIso() {
++  return new Date().toISOString();
++}
++
++function logInfo(req: express.Request, message: string, meta: Record<string, unknown> = {}) {
++  console.log(JSON.stringify({ level: "info", at: nowIso(), requestId: (req as any).requestId, route: req.path, message, ...meta }));
++}
++
++function logWarn(req: express.Request | null, message: string, meta: Record<string, unknown> = {}) {
++  console.warn(JSON.stringify({ level: "warn", at: nowIso(), requestId: req ? (req as any).requestId : undefined, route: req?.path, message, ...meta }));
++}
++
++function hashPayload(value: unknown) {
++  return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
++}
++
++function getCachedAnalysis(key: string) {
++  const cached = analysisCache.get(key);
++  if (!cached) return null;
++  if (cached.expiresAt < Date.now()) {
++    analysisCache.delete(key);
++    return null;
++  }
++  return cached.value;
++}
++
++function setCachedAnalysis(key: string, value: any) {
++  if (analysisCache.size > 500) {
++    const firstKey = analysisCache.keys().next().value;
++    if (firstKey) analysisCache.delete(firstKey);
++  }
++  analysisCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
++}
++
++function fallbackChatReply(message: string, sessionData: any, lang = "id") {
++  const isEn = lang === "en";
++  const project = sessionData?.project || {};
++  const role = sessionData?.top_roles?.[0]?.role_name || (isEn ? "your target role" : "role targetmu");
++  const projectName = project?.name || (isEn ? "your portfolio project" : "proyek portofoliomu");
++  const stack = Array.isArray(project?.tech_stack) && project.tech_stack.length
++    ? project.tech_stack.slice(0, 3).join(", ")
++    : (isEn ? "the simplest tools you already know" : "tools paling sederhana yang sudah kamu kuasai");
++  const lower = message.toLowerCase();
++  const asksTimeline = /timeline|roadmap|jadwal|belajar|minggu|week/.test(lower);
++  const asksPortfolio = /portfolio|portofolio|readme|github|demo/.test(lower);
++
++  if (isEn) {
++    if (asksTimeline) {
++      return `I can still help in offline mode. For ${role}, use a 7-day sprint: day 1 define the problem and success metric, day 2 collect or mock the data, days 3-4 build the smallest working ${projectName} with ${stack}, day 5 polish the UX, day 6 write the README with screenshots, and day 7 deploy plus record a short demo.`;
++    }
++    if (asksPortfolio) {
++      return `For a recruiter-ready portfolio, make ${projectName} easy to inspect: one live URL, one GitHub repo, a README with problem, tools, screenshots, and measurable outcome, plus 3 bullet points explaining what you personally built. Keep the scope small but finished.`;
++    }
++    return `Pathy is in offline guidance mode, but here is a concrete next step: open a fresh repo for ${projectName}, create the first screen or notebook using ${stack}, and write one clear goal at the top: what problem it solves, who it helps, and what result proves it works.`;
++  }
++
++  if (asksTimeline) {
++    return `Aku tetap bisa bantu dalam mode offline. Untuk ${role}, pakai sprint 7 hari: hari 1 tentukan masalah dan metrik sukses, hari 2 kumpulkan atau buat mock data, hari 3-4 bangun versi paling kecil dari ${projectName} dengan ${stack}, hari 5 poles UX, hari 6 tulis README dengan screenshot, dan hari 7 deploy plus rekam demo singkat.`;
++  }
++  if (asksPortfolio) {
++    return `Biar ${projectName} siap dilihat recruiter, pastikan ada satu live URL, satu repo GitHub, README berisi masalah, tools, screenshot, hasil terukur, dan 3 poin tentang bagian yang benar-benar kamu bangun sendiri. Scope kecil tidak masalah, yang penting selesai dan bisa dicoba.`;
++  }
++  return `Pathy sedang dalam mode panduan offline, tapi langkah pertamanya jelas: buat repo baru untuk ${projectName}, mulai screen/notebook paling sederhana memakai ${stack}, lalu tulis satu tujuan di atasnya: masalah apa yang diselesaikan, siapa yang dibantu, dan bukti apa yang menunjukkan hasilnya berhasil.`;
++}
++
++function isProviderCoolingDown(provider: string) {
++  return (providerCooldownUntil[provider] || 0) > Date.now();
++}
++
++function coolDownProvider(provider: string, ms = 60_000) {
++  providerCooldownUntil[provider] = Date.now() + ms;
++}
++
++function cleanJsonText(text: string) {
++  return text.replace(/```json/g, "").replace(/```/g, "").trim();
++}
++
++function validateBody<T>(schema: z.ZodType<T>, req: express.Request, res: express.Response): T | null {
++  const parsed = schema.safeParse(req.body);
++  if (!parsed.success) {
++    res.status(400).json({
++      error: "Invalid request body",
++      details: parsed.error.issues.map(issue => ({ path: issue.path.join("."), message: issue.message })),
++    });
++    return null;
++  }
++  return parsed.data;
++}
++
+ function getAiClient() {
+   if (!ai) {
+     const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+@@ -38,6 +155,9 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
+ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch: boolean = false): Promise<{ text: string; source: string }> {
+   // 1. First choice: Gemini AI
+   try {
++    if (isProviderCoolingDown("gemini")) {
++      throw new Error("Gemini provider is in cooldown after recent failures");
++    }
+     const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+     if (!key) {
+       throw new Error("GEMINI_API_KEY is not configured in the environment");
+@@ -60,8 +180,8 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
+         contents: prompt,
+         config: config
+       }),
+-      9000,
+-      "Gemini generation timed out after 9 seconds"
++      AI_TIMEOUT_MS,
++      `Gemini generation timed out after ${AI_TIMEOUT_MS}ms`
+     );
+ 
+     if (response && response.text) {
+@@ -71,6 +191,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
+   } catch (gemError: any) {
+     const errorMsg = gemError?.message || String(gemError);
+     const isQuotaExhausted = errorMsg.includes("429") || errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("exhausted") || errorMsg.toLowerCase().includes("timeout");
++    if (isQuotaExhausted) coolDownProvider("gemini");
+     console.warn(`[AI Routing] Gemini is unavailable, timed out, or quota exhausted (isQuota: ${isQuotaExhausted}). Detail: ${errorMsg}`);
+     
+     // Supplement prompt if search fails and we've fell back to non-grounded backup models
+@@ -81,7 +202,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
+ 
+     // 2. Second choice: Groq API Fallback
+     const groqKey = process.env.GROQ_API_KEY;
+-    if (groqKey) {
++    if (groqKey && !isProviderCoolingDown("groq")) {
+       console.log("[AI Routing] GROQ_API_KEY found, initiating Groq fallback routing...");
+       try {
+         const payload: any = {
+@@ -122,6 +243,8 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
+         }
+         throw new Error("Groq parsed JSON with missing choice output contents");
+       } catch (groqError: any) {
++        const msg = groqError?.message || String(groqError);
++        if (msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("timeout")) coolDownProvider("groq");
+         console.error("[AI Routing] Groq backup routing error:", groqError?.message || groqError);
+       }
+     } else {
+@@ -130,7 +253,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
+ 
+     // 3. Third choice: OpenRouter API Fallback
+     const openrouterKey = process.env.OPENROUTER_API_KEY;
+-    if (openrouterKey) {
++    if (openrouterKey && !isProviderCoolingDown("openrouter")) {
+       console.log("[AI Routing] OPENROUTER_API_KEY found, initiating OpenRouter fallback routing...");
+       try {
+         const payload: any = {
+@@ -173,6 +296,8 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
+         }
+         throw new Error("OpenRouter parsed JSON with missing choice output contents");
+       } catch (orError: any) {
++        const msg = orError?.message || String(orError);
++        if (msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("timeout")) coolDownProvider("openrouter");
+         console.error("[AI Routing] OpenRouter backup routing error:", orError?.message || orError);
+       }
+     } else {
+@@ -187,13 +312,86 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
+ async function startServer() {
+   const app = express();
+   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
++  const allowedOrigins = (process.env.CORS_ORIGINS || process.env.APP_URL || "")
++    .split(",")
++    .map(origin => origin.trim())
++    .filter(Boolean);
++
++  app.set("trust proxy", 1);
++  app.disable("x-powered-by");
++  app.use((req, res, next) => {
++    (req as any).requestId = req.headers["x-request-id"] || crypto.randomUUID();
++    res.setHeader("x-request-id", (req as any).requestId);
++    next();
++  });
++  app.use(helmet({
++    contentSecurityPolicy: false,
++    crossOriginEmbedderPolicy: false,
++  }));
++  app.use((req, res, next) => {
++    const origin = req.headers.origin;
++    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
++      if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
++      res.setHeader("Vary", "Origin");
++      res.setHeader("Access-Control-Allow-Credentials", "true");
++      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id");
++      res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
++    }
++    if (req.method === "OPTIONS") return res.sendStatus(204);
++    next();
++  });
++  app.use(express.json({ limit: "64kb" }));
++  app.use((req, res, next) => {
++    const started = Date.now();
++    res.on("finish", () => {
++      console.log(JSON.stringify({
++        level: res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info",
++        at: nowIso(),
++        requestId: (req as any).requestId,
++        method: req.method,
++        path: req.path,
++        status: res.statusCode,
++        durationMs: Date.now() - started,
++      }));
++    });
++    next();
++  });
++
++  const apiLimiter = rateLimit({
++    windowMs: 60_000,
++    limit: parseInt(process.env.API_RATE_LIMIT_PER_MIN || "120", 10),
++    standardHeaders: true,
++    legacyHeaders: false,
++  });
+ 
+-  app.use(express.json());
++  const aiLimiter = rateLimit({
++    windowMs: 60_000,
++    limit: parseInt(process.env.AI_RATE_LIMIT_PER_MIN || "12", 10),
++    standardHeaders: true,
++    legacyHeaders: false,
++    message: { error: "Too many AI requests. Please wait a moment and try again." },
++  });
++
++  app.use("/api", apiLimiter);
+ 
+   app.get("/api/v1/health", (req, res) => {
+     res.json({ status: "ok", mode: process.env.NODE_ENV });
+   });
+ 
++  app.get("/api/v1/ready", (req, res) => {
++    const configured = {
++      gemini: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY),
++      supabaseUrl: Boolean(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
++      cacheTtlMs: CACHE_TTL_MS,
++    };
++    res.status(configured.gemini ? 200 : 503).json({
++      status: configured.gemini ? "ready" : "degraded",
++      mode: process.env.NODE_ENV,
++      configured,
++      cacheSize: analysisCache.size,
++    });
++  });
++
+   // Load JSON data at startup
+   let taxonomyMap = "";
+   let templatesData = "";
+@@ -205,24 +403,27 @@ async function startServer() {
+   }
+ 
+   // API Routes
+-  app.post("/api/v1/conversation/question", async (req, res) => {
++  app.post("/api/v1/conversation/question", aiLimiter, async (req, res) => {
++    const body = validateBody(conversationSchema, req, res);
++    if (!body) return;
+     try {
+-      const lang = req.body?.lang || 'id';
++      const lang = body.lang || 'id';
+       const isEn = lang === 'en';
+-      if (req.body.question_index === 2) {
++      if (body.question_index === 2) {
+         const prompt = isEn
+-          ? `User answered Q1 (project they are proud of): "${req.body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer. Present all questions and onboarding tips entirely in professional, encouraging English language.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`
+-          : `User answered Q1 (project they are proud of): "${req.body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`;
++          ? `User answered Q1 (project they are proud of): "${body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer. Present all questions and onboarding tips entirely in professional, encouraging English language.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`
++          : `User answered Q1 (project they are proud of): "${body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`;
+         const aiRes = await callAIPortable(prompt, true, false);
+-        const text = aiRes.text.replace(/```json/g, '').replace(/```/g, '').trim();
++        const text = cleanJsonText(aiRes.text);
+         const data = JSON.parse(text);
++        logInfo(req, "conversation_question_generated", { source: aiRes.source });
+         res.json(data);
+         return;
+       }
+       res.json({ question: isEn ? "Static Question" : "Pertanyaan statis", tip: "..." });
+     } catch (e) {
+-      console.error("Conversation API failed to generate with AI:", e);
+-      const isEn = req.body?.lang === 'en';
++      logWarn(req, "conversation_question_fallback", { reason: (e as any)?.message || String(e) });
++      const isEn = body.lang === 'en';
+       if (isEn) {
+         res.json({
+           question: "From your story, which part often makes you lose track of time? (e.g., designing visual layouts, troubleshooting backend bugs, or crafting databases)",
+@@ -237,11 +438,21 @@ async function startServer() {
+     }
+   });
+ 
+-  app.post("/api/v1/analysis", async (req, res) => {
+-    let sessionId = req.body?.session_id || "session";
++  app.post("/api/v1/analysis", aiLimiter, async (req, res) => {
++    const body = validateBody(analysisSchema, req, res);
++    if (!body) return;
++    let sessionId = body.session_id;
++    const cacheKey = hashPayload({ answers: body.answers.map(answer => answer.toLowerCase()), lang: body.lang });
++    const cached = getCachedAnalysis(cacheKey);
++    if (cached) {
++      logInfo(req, "analysis_cache_hit");
++      res.setHeader("x-pathfinder-cache", "hit");
++      return res.json({ ...cached, session_id: sessionId, cache_status: "hit" });
++    }
++    res.setHeader("x-pathfinder-cache", "miss");
+     try {
+-      const answers = req.body?.answers || [];
+-      const lang = req.body?.lang || 'id';
++      const answers = body.answers;
++      const lang = body.lang || 'id';
+       const isEn = lang === 'en';
+ 
+       // 1. Extract Signals & Match Roles
+@@ -286,10 +497,10 @@ async function startServer() {
+ 
+       const aiRes = await callAIPortable(prompt, true, true);
+ 
+-      let text = aiRes.text.replace(/```json/g, '').replace(/```/g, '').trim();
++      let text = cleanJsonText(aiRes.text);
+       const resultObj = JSON.parse(text);
+ 
+-      res.json({
++      const responseBody = {
+         session_id: sessionId,
+         user_name: resultObj.user_name || answers[0] || "Kamu",
+         readiness_score: resultObj.readiness_score || 70,
+@@ -309,12 +520,15 @@ async function startServer() {
+           { title: "BI Analyst Intern", company: "Simulated Tokopedia", location: "Jakarta", match: 74, type: "Internship (Sample)", is_fallback: true },
+           { title: "Data Operations", company: "Simulated Sayurbox", location: "Bandung", match: 68, type: "Full-time (Sample)", is_fallback: true }
+         ]
+-      });
++      };
++      setCachedAnalysis(cacheKey, responseBody);
++      logInfo(req, "analysis_generated", { source: aiRes.source, isLive: responseBody.is_live });
++      res.json(responseBody);
+ 
+     } catch (e) {
+-      console.error("Gemini failed, using dynamic local analyzer fallback:", e);
+-      const answers = req.body?.answers || [];
+-      const lang = req.body?.lang || 'id';
++      logWarn(req, "analysis_fallback", { reason: (e as any)?.message || String(e) });
++      const answers = body.answers;
++      const lang = body.lang || 'id';
+       const isEn = lang === 'en';
+       const uName = answers[0]?.trim() || "Kamu";
+       const q1Content = (answers[1] || "").trim().toLowerCase();
+@@ -331,6 +545,11 @@ async function startServer() {
+       const isNonsenseInput = (q1: string, q2: string): boolean => {
+         const combined = (q1 + " " + q2).trim().toLowerCase();
+         if (combined.length < 8) return true;
++        const words = combined.split(/\s+/).filter(Boolean);
++        const meaningfulWords = words.filter(word => word.length >= 4 && !/^(gatau|nggak|tidak|bingung|confused|unknown|nothing|none|idk|dont|don't|soon|cepat)$/.test(word));
++        if (words.length <= 3 || meaningfulWords.length < 2) return true;
++        const vagueOnly = /^(gatau|nggak tahu|tidak tahu|bingung|confused|idk|i don't know|i dont know|nothing|none|belum tahu|kurang tahu)(\s+|$)/;
++        if (vagueOnly.test(combined)) return true;
+         if (/^([a-z0-9])\1+$/.test(combined)) return true; // e.g. "aaaaa"
+         
+         // Match common repeating mashes
+@@ -361,17 +580,26 @@ async function startServer() {
+       const charSum = uName.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+       let field = fallbackPool[charSum % fallbackPool.length];
+       
++      const combinedContent = `${q1Content} ${q2Content}`;
++      const hasBackendSignal = /\b(rest\s+api|api|backend|database|basis\s+data|server|express|node(?:\.js)?|postgres(?:ql)?|jwt|middleware|endpoint)\b/.test(combinedContent);
++      const hasCyberSignal = (
++        q1Content.includes("cyber") || q1Content.includes("keamanan siber") ||
++        q1Content.includes("hack") || q1Content.includes("pentest") || q1Content.includes("ctf") ||
++        q1Content.includes("owasp") || q1Content.includes("vulnerability") || q1Content.includes("soc analyst") ||
++        q1Content.includes("capture") || q1Content.includes("flag") || q1Content.includes("siber") ||
++        q1Content.includes("network security") ||
++        q2Content.includes("cyber") || q2Content.includes("keamanan siber") ||
++        q2Content.includes("hack") || q2Content.includes("pentest") || q2Content.includes("ctf") ||
++        q2Content.includes("owasp") || q2Content.includes("vulnerability") || q2Content.includes("soc analyst") ||
++        q2Content.includes("capture") || q2Content.includes("flag") || q2Content.includes("siber") ||
++        q2Content.includes("network security")
++      );
++
+       if (isNonsenseInput(q1Content, q2Content)) {
+         field = "nonsense";
+-      } else if (
+-        q1Content.includes("cyber") || q1Content.includes("security") || q1Content.includes("keamanan") || 
+-        q1Content.includes("hack") || q1Content.includes("pentest") || q1Content.includes("ctf") || 
+-        q1Content.includes("capture") || q1Content.includes("flag") || q1Content.includes("lomba") || 
+-        q1Content.includes("siber") || q1Content.includes("jaringan") || q1Content.includes("network") ||
+-        q2Content.includes("cyber") || q2Content.includes("security") || q2Content.includes("keamanan") || 
+-        q2Content.includes("hack") || q2Content.includes("pentest") || q2Content.includes("ctf") || 
+-        q2Content.includes("capture") || q2Content.includes("flag") || q2Content.includes("lomba") ||
+-        q2Content.includes("siber") || q2Content.includes("jaringan") || q2Content.includes("network")
++      } else if (hasBackendSignal) {
++        field = "backend";
++      } else if (hasCyberSignal
+       ) {
+         field = "cybersecurity";
+       } else if (
+@@ -388,13 +616,6 @@ async function startServer() {
+         q2Content.includes("design") || q2Content.includes("figma")
+       ) {
+         field = "uiux";
+-      } else if (
+-        q1Content.includes("backend") || q1Content.includes("api") || q1Content.includes("database") || 
+-        q1Content.includes("server") || q1Content.includes("express") || q1Content.includes("node") ||
+-        q2Content.includes("backend") || q2Content.includes("api") || q2Content.includes("database") || 
+-        q2Content.includes("server")
+-      ) {
+-        field = "backend";
+       }
+ 
+       let topRoles = [];
+@@ -652,15 +873,15 @@ async function startServer() {
+         ];
+       }
+ 
+-      res.json({
++      const fallbackBody = {
+         session_id: sessionId,
+         user_name: uName,
+         readiness_score: 75,
+         top_roles: topRoles,
+         signal_chips: signalChips,
+         skill_gaps: [
+-          { skill: field === "data" ? "Python (pandas)" : field === "uiux" ? "Design System Setup" : field === "cybersecurity" ? "Linux Command Line & Networking" : "React/JavaScript ES6", pct: 80 },
+-          { skill: field === "cybersecurity" ? (isEn ? "Vulnerability Logging & Hardening Compilation" : "Kompilasi Vulnerability Log & Hardening") : (isEn ? "Data Storytelling & Presentation" : "Data Storytelling & Presentation"), pct: 60 }
++          { skill: field === "data" ? "Python (pandas)" : field === "uiux" ? "Design System Setup" : field === "backend" ? "API Authentication & Testing" : field === "cybersecurity" ? "Linux Command Line & Networking" : "React/JavaScript ES6", pct: 80 },
++          { skill: field === "backend" ? (isEn ? "Production Deployment & API Documentation" : "Deployment Production & Dokumentasi API") : field === "cybersecurity" ? (isEn ? "Vulnerability Logging & Hardening Compilation" : "Kompilasi Vulnerability Log & Hardening") : (isEn ? "Data Storytelling & Presentation" : "Data Storytelling & Presentation"), pct: 60 }
+         ],
+         scout_message: scoutMessage,
+         follow_up_questions: isEn ? [
+@@ -673,8 +894,8 @@ async function startServer() {
+         project: project,
+         visual_roadmap: [
+           { day: 7, title: isEn ? "Foundation Setup" : "Setup Fondasi", task: isEn ? "Configure project environment and define DB / code repository." : "Siapkan project environment dan inisialisasi basis data / repository." },
+-          { day: 30, title: isEn ? "Core Milestone 1" : "Milestone Utama 1", task: field === "data" ? (isEn ? "Begin learning SQL Joins to model sales performance." : "Mulai belajar SQL Joins untuk menganalisa visual.") : field === "cybersecurity" ? (isEn ? "Write standard Python socket port-scanner scripts." : "Mulai script port scanner & service discovery dasar.") : (isEn ? "Integrate visual state management & routing." : "Setup state manager & routing dinamis.") },
+-          { day: 60, title: isEn ? "Core Milestone 2" : "Milestone Utama 2", task: field === "cybersecurity" ? (isEn ? "Automate target matching rules with live vulnerability feeds." : "Susun sistem matching database kerentanan dengan CVE feed.") : (isEn ? "Form custom dashboard graphs with responsive animated components." : "Buat halaman interaktif dashboard lengkap dengan UI transisi yang ramah.") },
++          { day: 30, title: isEn ? "Core Milestone 1" : "Milestone Utama 1", task: field === "data" ? (isEn ? "Begin learning SQL Joins to model sales performance." : "Mulai belajar SQL Joins untuk menganalisa visual.") : field === "backend" ? (isEn ? "Build authenticated CRUD routes and database migrations." : "Bangun route CRUD ber-auth dan migration database.") : field === "cybersecurity" ? (isEn ? "Write standard Python socket port-scanner scripts." : "Mulai script port scanner & service discovery dasar.") : (isEn ? "Integrate visual state management & routing." : "Setup state manager & routing dinamis.") },
++          { day: 60, title: isEn ? "Core Milestone 2" : "Milestone Utama 2", task: field === "backend" ? (isEn ? "Add API tests, Swagger documentation, and production error handling." : "Tambahkan API test, dokumentasi Swagger, dan error handling production.") : field === "cybersecurity" ? (isEn ? "Automate target matching rules with live vulnerability feeds." : "Susun sistem matching database kerentanan dengan CVE feed.") : (isEn ? "Form custom dashboard graphs with responsive animated components." : "Buat halaman interaktif dashboard lengkap dengan UI transisi yang ramah.") },
+           { day: 90, title: isEn ? "Publish & Deploy" : "Hasil Akhir & Deploy", task: isEn ? "Deploy your actual build to a free cloud host and link the URL to your CV." : "Deploy karya aslimu di platform cloud dan tautkan url portfolio di CV-mu." }
+         ],
+         jobs_analyzed: 20,
+@@ -682,13 +903,17 @@ async function startServer() {
+         is_live: false,
+         fetched_at: new Date().toISOString(),
+         live_jobs: liveJobs.map(j => ({ ...j, is_fallback: true, company: "Simulated " + j.company }))
+-      });
++      };
++      setCachedAnalysis(cacheKey, fallbackBody);
++      res.json(fallbackBody);
+     }
+   });
+ 
+-  app.post("/api/v1/chat", async (req, res) => {
++  app.post("/api/v1/chat", aiLimiter, async (req, res) => {
++    const body = validateBody(chatSchema, req, res);
++    if (!body) return;
+     try {
+-      const { message, sessionData, lang, mentorStyle } = req.body;
++      const { message, sessionData, lang, mentorStyle } = body;
+       const isEn = lang === 'en';
+       const tone = mentorStyle === 'profesional' 
+         ? (isEn ? "professional, formal, and focused" : "profesional, baku, dan terfokus") 
+@@ -712,13 +937,14 @@ IMPORTANT: Your response must be ONLY valid JSON matching this schema exactly. N
+ 
+       const aiRes = await callAIPortable(prompt, true, false);
+ 
+-      let text = aiRes.text.replace(/```json/g, '').replace(/```/g, '').trim();
++      let text = cleanJsonText(aiRes.text);
+       const resultObj = JSON.parse(text);
++      logInfo(req, "chat_generated", { source: aiRes.source });
+       res.json(resultObj);
+     } catch (e) {
+-      console.error(e);
++      logWarn(req, "chat_fallback", { reason: (e as any)?.message || String(e) });
+       res.json({
+-        reply: "Maaf ya, koneksi Pathy lagi gangguan sebentar. Nggak bisa update dashboard saat ini.",
++        reply: fallbackChatReply(body.message, body.sessionData, body.lang),
+         updatedData: null
+       });
+     }
+diff --git a/supabase/schema.sql b/supabase/schema.sql
+index bb233fe..50f5eb0 100644
+--- a/supabase/schema.sql
++++ b/supabase/schema.sql
+@@ -72,6 +72,9 @@ alter table milestones enable row level security;
+ create policy "Users can view their own profile" on users
+   for select using (auth.uid() = id);
+ 
++create policy "Users can create their own profile" on users
++  for insert with check (auth.uid() = id);
++
+ create policy "Users can update their own profile" on users
+   for update using (auth.uid() = id);
+ 
+diff --git a/vercel.json b/vercel.json
+new file mode 100644
+index 0000000..9b59296
+--- /dev/null
++++ b/vercel.json
+@@ -0,0 +1,29 @@
++{
++  "buildCommand": "npm run build",
++  "outputDirectory": "dist",
++  "rewrites": [
++    {
++      "source": "/((?!api/.*).*)",
++      "destination": "/index.html"
++    }
++  ],
++  "headers": [
++    {
++      "source": "/(.*)",
++      "headers": [
++        {
++          "key": "X-Content-Type-Options",
++          "value": "nosniff"
++        },
++        {
++          "key": "Referrer-Policy",
++          "value": "no-referrer"
++        },
++        {
++          "key": "X-Frame-Options",
++          "value": "SAMEORIGIN"
++        }
++      ]
++    }
++  ]
++}
