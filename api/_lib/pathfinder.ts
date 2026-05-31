@@ -160,13 +160,23 @@ export function fallbackAnalysis(answers: string[], sessionId: string, lang = "i
   const userName = answers[0]?.trim() || (isEn ? "Friend" : "Kamu");
   const joined = `${answers[1] || ""} ${answers[2] || ""}`.toLowerCase();
   const location = answers[3]?.trim() || "Jakarta";
-  const isData = /data|sql|excel|spreadsheet|dashboard|analyst|python/.test(joined);
+  const isBackend = /\b(rest\s+api|api|backend|database|basis\s+data|server|express|node(?:\.js)?|postgres(?:ql)?|jwt|middleware|endpoint)\b/.test(joined);
   const isUi = /ui|ux|figma|design|desain|wireframe/.test(joined);
-  const isBackend = /backend|api|database|server|node|express/.test(joined);
+  const isData = !isBackend && /data|sql|excel|spreadsheet|dashboard|analyst|python/.test(joined);
 
-  const role = isData ? "Junior Data Analyst" : isUi ? "Junior UI/UX Designer" : isBackend ? "Junior Backend Engineer" : "Junior Web Developer";
-  const skill = isData ? "Python (pandas)" : isUi ? "Design System Setup" : isBackend ? "API Authentication" : "React/JavaScript ES6";
-  const project = isData
+  const role = isBackend ? "Junior Backend Engineer" : isData ? "Junior Data Analyst" : isUi ? "Junior UI/UX Designer" : "Junior Web Developer";
+  const skill = isBackend ? "API Authentication & Testing" : isData ? "Python (pandas)" : isUi ? "Design System Setup" : "React/JavaScript ES6";
+  const project = isBackend
+    ? {
+        name: "Secure E-Commerce REST API Engine",
+        dataset_name: "Dynamic API Middleware",
+        duration_weeks: 2,
+        skills_closed: ["JWT Authentication", "Middleware Routing", "Database Migration Setup"],
+        tech_stack: ["Express.js", "PostgreSQL"],
+        week_1: "Week 1: Design product schemas and implement authenticated CRUD routes.",
+        week_2: "Week 2: Add validation, API tests, docs, and deploy the REST API.",
+      }
+    : isData
     ? {
         name: "Customer Retention Cohort Dashboard",
         dataset_name: "E-Commerce Market Dataset",
@@ -192,7 +202,7 @@ export function fallbackAnalysis(answers: string[], sessionId: string, lang = "i
     readiness_score: 75,
     top_roles: [
       { rank: 1, role_name: role, role_id: role.toLowerCase().replace(/[^a-z0-9]+/g, "_"), fit_score: 82, skills_shown: project.skills_closed.slice(0, 3), job_count: 8 },
-      { rank: 2, role_name: isData ? "BI Analyst Intern" : "Frontend Engineer Intern", role_id: "secondary_role", fit_score: 74, skills_shown: ["Portfolio", "Communication"], job_count: 6 },
+      { rank: 2, role_name: isBackend ? "Web Developer (Backend Focus)" : isData ? "BI Analyst Intern" : "Frontend Engineer Intern", role_id: "secondary_role", fit_score: 74, skills_shown: ["Portfolio", "Communication"], job_count: 6 },
     ],
     signal_chips: isEn ? ["practical builder", "portfolio ready", "needs sharper proof"] : ["builder praktis", "siap portfolio", "butuh bukti lebih tajam"],
     skill_gaps: [

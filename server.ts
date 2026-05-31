@@ -575,17 +575,26 @@ async function startServer() {
       const charSum = uName.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
       let field = fallbackPool[charSum % fallbackPool.length];
       
+      const combinedContent = `${q1Content} ${q2Content}`;
+      const hasBackendSignal = /\b(rest\s+api|api|backend|database|basis\s+data|server|express|node(?:\.js)?|postgres(?:ql)?|jwt|middleware|endpoint)\b/.test(combinedContent);
+      const hasCyberSignal = (
+        q1Content.includes("cyber") || q1Content.includes("keamanan siber") ||
+        q1Content.includes("hack") || q1Content.includes("pentest") || q1Content.includes("ctf") ||
+        q1Content.includes("owasp") || q1Content.includes("vulnerability") || q1Content.includes("soc analyst") ||
+        q1Content.includes("capture") || q1Content.includes("flag") || q1Content.includes("siber") ||
+        q1Content.includes("network security") ||
+        q2Content.includes("cyber") || q2Content.includes("keamanan siber") ||
+        q2Content.includes("hack") || q2Content.includes("pentest") || q2Content.includes("ctf") ||
+        q2Content.includes("owasp") || q2Content.includes("vulnerability") || q2Content.includes("soc analyst") ||
+        q2Content.includes("capture") || q2Content.includes("flag") || q2Content.includes("siber") ||
+        q2Content.includes("network security")
+      );
+
       if (isNonsenseInput(q1Content, q2Content)) {
         field = "nonsense";
-      } else if (
-        q1Content.includes("cyber") || q1Content.includes("security") || q1Content.includes("keamanan") || 
-        q1Content.includes("hack") || q1Content.includes("pentest") || q1Content.includes("ctf") || 
-        q1Content.includes("capture") || q1Content.includes("flag") || q1Content.includes("lomba") || 
-        q1Content.includes("siber") || q1Content.includes("jaringan") || q1Content.includes("network") ||
-        q2Content.includes("cyber") || q2Content.includes("security") || q2Content.includes("keamanan") || 
-        q2Content.includes("hack") || q2Content.includes("pentest") || q2Content.includes("ctf") || 
-        q2Content.includes("capture") || q2Content.includes("flag") || q2Content.includes("lomba") ||
-        q2Content.includes("siber") || q2Content.includes("jaringan") || q2Content.includes("network")
+      } else if (hasBackendSignal) {
+        field = "backend";
+      } else if (hasCyberSignal
       ) {
         field = "cybersecurity";
       } else if (
@@ -602,13 +611,6 @@ async function startServer() {
         q2Content.includes("design") || q2Content.includes("figma")
       ) {
         field = "uiux";
-      } else if (
-        q1Content.includes("backend") || q1Content.includes("api") || q1Content.includes("database") || 
-        q1Content.includes("server") || q1Content.includes("express") || q1Content.includes("node") ||
-        q2Content.includes("backend") || q2Content.includes("api") || q2Content.includes("database") || 
-        q2Content.includes("server")
-      ) {
-        field = "backend";
       }
 
       let topRoles = [];
@@ -873,8 +875,8 @@ async function startServer() {
         top_roles: topRoles,
         signal_chips: signalChips,
         skill_gaps: [
-          { skill: field === "data" ? "Python (pandas)" : field === "uiux" ? "Design System Setup" : field === "cybersecurity" ? "Linux Command Line & Networking" : "React/JavaScript ES6", pct: 80 },
-          { skill: field === "cybersecurity" ? (isEn ? "Vulnerability Logging & Hardening Compilation" : "Kompilasi Vulnerability Log & Hardening") : (isEn ? "Data Storytelling & Presentation" : "Data Storytelling & Presentation"), pct: 60 }
+          { skill: field === "data" ? "Python (pandas)" : field === "uiux" ? "Design System Setup" : field === "backend" ? "API Authentication & Testing" : field === "cybersecurity" ? "Linux Command Line & Networking" : "React/JavaScript ES6", pct: 80 },
+          { skill: field === "backend" ? (isEn ? "Production Deployment & API Documentation" : "Deployment Production & Dokumentasi API") : field === "cybersecurity" ? (isEn ? "Vulnerability Logging & Hardening Compilation" : "Kompilasi Vulnerability Log & Hardening") : (isEn ? "Data Storytelling & Presentation" : "Data Storytelling & Presentation"), pct: 60 }
         ],
         scout_message: scoutMessage,
         follow_up_questions: isEn ? [
@@ -887,8 +889,8 @@ async function startServer() {
         project: project,
         visual_roadmap: [
           { day: 7, title: isEn ? "Foundation Setup" : "Setup Fondasi", task: isEn ? "Configure project environment and define DB / code repository." : "Siapkan project environment dan inisialisasi basis data / repository." },
-          { day: 30, title: isEn ? "Core Milestone 1" : "Milestone Utama 1", task: field === "data" ? (isEn ? "Begin learning SQL Joins to model sales performance." : "Mulai belajar SQL Joins untuk menganalisa visual.") : field === "cybersecurity" ? (isEn ? "Write standard Python socket port-scanner scripts." : "Mulai script port scanner & service discovery dasar.") : (isEn ? "Integrate visual state management & routing." : "Setup state manager & routing dinamis.") },
-          { day: 60, title: isEn ? "Core Milestone 2" : "Milestone Utama 2", task: field === "cybersecurity" ? (isEn ? "Automate target matching rules with live vulnerability feeds." : "Susun sistem matching database kerentanan dengan CVE feed.") : (isEn ? "Form custom dashboard graphs with responsive animated components." : "Buat halaman interaktif dashboard lengkap dengan UI transisi yang ramah.") },
+          { day: 30, title: isEn ? "Core Milestone 1" : "Milestone Utama 1", task: field === "data" ? (isEn ? "Begin learning SQL Joins to model sales performance." : "Mulai belajar SQL Joins untuk menganalisa visual.") : field === "backend" ? (isEn ? "Build authenticated CRUD routes and database migrations." : "Bangun route CRUD ber-auth dan migration database.") : field === "cybersecurity" ? (isEn ? "Write standard Python socket port-scanner scripts." : "Mulai script port scanner & service discovery dasar.") : (isEn ? "Integrate visual state management & routing." : "Setup state manager & routing dinamis.") },
+          { day: 60, title: isEn ? "Core Milestone 2" : "Milestone Utama 2", task: field === "backend" ? (isEn ? "Add API tests, Swagger documentation, and production error handling." : "Tambahkan API test, dokumentasi Swagger, dan error handling production.") : field === "cybersecurity" ? (isEn ? "Automate target matching rules with live vulnerability feeds." : "Susun sistem matching database kerentanan dengan CVE feed.") : (isEn ? "Form custom dashboard graphs with responsive animated components." : "Buat halaman interaktif dashboard lengkap dengan UI transisi yang ramah.") },
           { day: 90, title: isEn ? "Publish & Deploy" : "Hasil Akhir & Deploy", task: isEn ? "Deploy your actual build to a free cloud host and link the URL to your CV." : "Deploy karya aslimu di platform cloud dan tautkan url portfolio di CV-mu." }
         ],
         jobs_analyzed: 20,
