@@ -46,7 +46,16 @@ Return this exact JSON shape:
   "jobs_analyzed": 20,
   "live_jobs": [{"title":"role","company":"company","location":"location","match":82,"type":"Full-time"}]
 }`;
-    const result = await generateJson(prompt, true);
+    let result;
+    try {
+      result = await generateJson(prompt, true);
+    } catch (searchErr: any) {
+      console.warn("Gemini grounded analysis failed; retrying without search", {
+        name: searchErr?.name,
+        message: searchErr?.message,
+      });
+      result = await generateJson(prompt, false);
+    }
     const responseBody = {
       session_id: body.session_id,
       user_name: result.user_name || body.answers[0] || "Kamu",
@@ -67,6 +76,10 @@ Return this exact JSON shape:
     setCachedAnalysis(cacheKey, responseBody);
     res.status(200).json(responseBody);
   } catch (err: any) {
+    console.warn("Analysis provider failed; serving deterministic fallback", {
+      name: err?.name,
+      message: err?.message,
+    });
     const fallback = fallbackAnalysis(body.answers, body.session_id, body.lang);
     setCachedAnalysis(cacheKey, fallback);
     res.status(200).json(fallback);

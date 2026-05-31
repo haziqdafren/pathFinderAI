@@ -10,6 +10,8 @@ const AI_LIMIT = Number(process.env.AI_RATE_LIMIT_PER_MIN || 12);
 const API_LIMIT = Number(process.env.API_RATE_LIMIT_PER_MIN || 120);
 const CACHE_TTL_MS = Number(process.env.ANALYSIS_CACHE_TTL_MS || 1_800_000);
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 9_000);
+const DEFAULT_AI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const DEFAULT_SEARCH_AI_MODEL = process.env.GEMINI_SEARCH_MODEL || "gemini-3.5-flash";
 
 export const conversationSchema = z.object({
   question_index: z.number().int().min(0).max(10),
@@ -106,7 +108,7 @@ export function validate<T>(schema: z.ZodType<T>, req: any, res: any): T | null 
 }
 
 function getAiClient() {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const key = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
   if (!key) throw new Error("GEMINI_API_KEY is not configured");
   if (!ai) ai = new GoogleGenAI({ apiKey: key });
   return ai;
@@ -123,7 +125,7 @@ export async function generateJson(prompt: string, useSearch = false) {
 
   const response: any = await Promise.race([
     client.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: useSearch ? DEFAULT_SEARCH_AI_MODEL : DEFAULT_AI_MODEL,
       contents: prompt,
       config,
     }),
@@ -232,9 +234,11 @@ export function fallbackAnalysis(answers: string[], sessionId: string, lang = "i
 }
 
 export function readyPayload() {
+  const geminiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+  const supabaseUrl = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
   const configured = {
-    gemini: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY),
-    supabaseUrl: Boolean(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
+    gemini: Boolean(geminiKey),
+    supabaseUrl: Boolean(supabaseUrl),
     cacheTtlMs: CACHE_TTL_MS,
   };
   return {
