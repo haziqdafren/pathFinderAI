@@ -1,4 +1,4 @@
-import { enforceMethod, enforceRateLimit, handleOptions, setCommonHeaders } from "../_lib/pathfinder";
+import { enforceMethod, enforceRateLimit, handleOptions, setCommonHeaders } from "../_lib/pathfinder.js";
 
 export default function handler(req: any, res: any) {
   if (handleOptions(req, res)) return;

@@ -1,4 +1,4 @@
-import { analysisCacheKey, analysisSchema, enforceMethod, enforceRateLimit, fallbackAnalysis, generateJson, getCachedAnalysis, handleOptions, setCachedAnalysis, setCommonHeaders, validate } from "../_lib/pathfinder";
+import { analysisCacheKey, analysisSchema, enforceMethod, enforceRateLimit, fallbackAnalysis, generateJson, getCachedAnalysis, handleOptions, setCachedAnalysis, setCommonHeaders, validate } from "../_lib/pathfinder.js";
 
 export default async function handler(req: any, res: any) {
   if (handleOptions(req, res)) return;

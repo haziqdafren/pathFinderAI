@@ -1,4 +1,4 @@
-import { conversationSchema, enforceMethod, enforceRateLimit, generateJson, handleOptions, setCommonHeaders, validate } from "../../_lib/pathfinder";
+import { conversationSchema, enforceMethod, enforceRateLimit, generateJson, handleOptions, setCommonHeaders, validate } from "../../_lib/pathfinder.js";
 
 export default async function handler(req: any, res: any) {
   if (handleOptions(req, res)) return;
