@@ -134,9 +134,11 @@ export default function LoadingScreen() {
         const { resultPromise, sessionId } = await startAnalysis(answers, lang);
         if (resultPromise) {
           const data = await resultPromise;
+          const enrichedData = { ...data, session_id: sessionId };
+          sessionStorage.setItem('pathfinder_session_id', sessionId);
           sessionStorage.setItem('pathfinder_session', JSON.stringify({
             session_id: sessionId,
-            results: data,
+            results: enrichedData,
             timestamp: Date.now()
           }));
           localStorage.setItem('pathy_shuffles_left', '3');
@@ -149,6 +151,7 @@ export default function LoadingScreen() {
         sessionStorage.setItem('pathfinder_session', JSON.stringify({
           session_id: 'error_fallback',
           results: {
+            session_id: 'error_fallback',
             user_name: localStorage.getItem('pathy_user_name') || "Teman",
             readiness_score: 55,
             top_roles: [

@@ -4,10 +4,127 @@ import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { z } from "zod";
+import crypto from "crypto";
 
 dotenv.config();
 
 let ai = null;
+const providerCooldownUntil: Record<string, number> = {};
+const analysisCache = new Map<string, { expiresAt: number; value: any }>();
+const CACHE_TTL_MS = parseInt(process.env.ANALYSIS_CACHE_TTL_MS || `${1000 * 60 * 30}`, 10);
+const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || "9000", 10);
+
+const conversationSchema = z.object({
+  question_index: z.number().int().min(0).max(10),
+  previous_answer: z.string().trim().max(1600).default(""),
+  lang: z.enum(["id", "en"]).default("id"),
+});
+
+const analysisSchema = z.object({
+  answers: z.array(z.string().trim().max(1200)).min(5).max(5),
+  session_id: z.string().trim().min(3).max(120).regex(/^[a-zA-Z0-9._:-]+$/),
+  lang: z.enum(["id", "en"]).default("id"),
+});
+
+const chatSchema = z.object({
+  message: z.string().trim().min(1).max(1200),
+  sessionData: z.unknown().optional(),
+  lang: z.enum(["id", "en"]).default("id"),
+  mentorStyle: z.enum(["profesional", "santai"]).default("santai"),
+});
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function logInfo(req: express.Request, message: string, meta: Record<string, unknown> = {}) {
+  console.log(JSON.stringify({ level: "info", at: nowIso(), requestId: (req as any).requestId, route: req.path, message, ...meta }));
+}
+
+function logWarn(req: express.Request | null, message: string, meta: Record<string, unknown> = {}) {
+  console.warn(JSON.stringify({ level: "warn", at: nowIso(), requestId: req ? (req as any).requestId : undefined, route: req?.path, message, ...meta }));
+}
+
+function hashPayload(value: unknown) {
+  return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function getCachedAnalysis(key: string) {
+  const cached = analysisCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt < Date.now()) {
+    analysisCache.delete(key);
+    return null;
+  }
+  return cached.value;
+}
+
+function setCachedAnalysis(key: string, value: any) {
+  if (analysisCache.size > 500) {
+    const firstKey = analysisCache.keys().next().value;
+    if (firstKey) analysisCache.delete(firstKey);
+  }
+  analysisCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
+}
+
+function fallbackChatReply(message: string, sessionData: any, lang = "id") {
+  const isEn = lang === "en";
+  const project = sessionData?.project || {};
+  const role = sessionData?.top_roles?.[0]?.role_name || (isEn ? "your target role" : "role targetmu");
+  const projectName = project?.name || (isEn ? "your portfolio project" : "proyek portofoliomu");
+  const stack = Array.isArray(project?.tech_stack) && project.tech_stack.length
+    ? project.tech_stack.slice(0, 3).join(", ")
+    : (isEn ? "the simplest tools you already know" : "tools paling sederhana yang sudah kamu kuasai");
+  const lower = message.toLowerCase();
+  const asksTimeline = /timeline|roadmap|jadwal|belajar|minggu|week/.test(lower);
+  const asksPortfolio = /portfolio|portofolio|readme|github|demo/.test(lower);
+
+  if (isEn) {
+    if (asksTimeline) {
+      return `I can still help in offline mode. For ${role}, use a 7-day sprint: day 1 define the problem and success metric, day 2 collect or mock the data, days 3-4 build the smallest working ${projectName} with ${stack}, day 5 polish the UX, day 6 write the README with screenshots, and day 7 deploy plus record a short demo.`;
+    }
+    if (asksPortfolio) {
+      return `For a recruiter-ready portfolio, make ${projectName} easy to inspect: one live URL, one GitHub repo, a README with problem, tools, screenshots, and measurable outcome, plus 3 bullet points explaining what you personally built. Keep the scope small but finished.`;
+    }
+    return `Pathy is in offline guidance mode, but here is a concrete next step: open a fresh repo for ${projectName}, create the first screen or notebook using ${stack}, and write one clear goal at the top: what problem it solves, who it helps, and what result proves it works.`;
+  }
+
+  if (asksTimeline) {
+    return `Aku tetap bisa bantu dalam mode offline. Untuk ${role}, pakai sprint 7 hari: hari 1 tentukan masalah dan metrik sukses, hari 2 kumpulkan atau buat mock data, hari 3-4 bangun versi paling kecil dari ${projectName} dengan ${stack}, hari 5 poles UX, hari 6 tulis README dengan screenshot, dan hari 7 deploy plus rekam demo singkat.`;
+  }
+  if (asksPortfolio) {
+    return `Biar ${projectName} siap dilihat recruiter, pastikan ada satu live URL, satu repo GitHub, README berisi masalah, tools, screenshot, hasil terukur, dan 3 poin tentang bagian yang benar-benar kamu bangun sendiri. Scope kecil tidak masalah, yang penting selesai dan bisa dicoba.`;
+  }
+  return `Pathy sedang dalam mode panduan offline, tapi langkah pertamanya jelas: buat repo baru untuk ${projectName}, mulai screen/notebook paling sederhana memakai ${stack}, lalu tulis satu tujuan di atasnya: masalah apa yang diselesaikan, siapa yang dibantu, dan bukti apa yang menunjukkan hasilnya berhasil.`;
+}
+
+function isProviderCoolingDown(provider: string) {
+  return (providerCooldownUntil[provider] || 0) > Date.now();
+}
+
+function coolDownProvider(provider: string, ms = 60_000) {
+  providerCooldownUntil[provider] = Date.now() + ms;
+}
+
+function cleanJsonText(text: string) {
+  return text.replace(/```json/g, "").replace(/```/g, "").trim();
+}
+
+function validateBody<T>(schema: z.ZodType<T>, req: express.Request, res: express.Response): T | null {
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Invalid request body",
+      details: parsed.error.issues.map(issue => ({ path: issue.path.join("."), message: issue.message })),
+    });
+    return null;
+  }
+  return parsed.data;
+}
+
 function getAiClient() {
   if (!ai) {
     const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -38,6 +155,9 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
 async function callAIPortable(prompt: string, isJson: boolean = false, useSearch: boolean = false): Promise<{ text: string; source: string }> {
   // 1. First choice: Gemini AI
   try {
+    if (isProviderCoolingDown("gemini")) {
+      throw new Error("Gemini provider is in cooldown after recent failures");
+    }
     const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!key) {
       throw new Error("GEMINI_API_KEY is not configured in the environment");
@@ -60,8 +180,8 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
         contents: prompt,
         config: config
       }),
-      9000,
-      "Gemini generation timed out after 9 seconds"
+      AI_TIMEOUT_MS,
+      `Gemini generation timed out after ${AI_TIMEOUT_MS}ms`
     );
 
     if (response && response.text) {
@@ -71,6 +191,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
   } catch (gemError: any) {
     const errorMsg = gemError?.message || String(gemError);
     const isQuotaExhausted = errorMsg.includes("429") || errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("exhausted") || errorMsg.toLowerCase().includes("timeout");
+    if (isQuotaExhausted) coolDownProvider("gemini");
     console.warn(`[AI Routing] Gemini is unavailable, timed out, or quota exhausted (isQuota: ${isQuotaExhausted}). Detail: ${errorMsg}`);
     
     // Supplement prompt if search fails and we've fell back to non-grounded backup models
@@ -81,7 +202,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
 
     // 2. Second choice: Groq API Fallback
     const groqKey = process.env.GROQ_API_KEY;
-    if (groqKey) {
+    if (groqKey && !isProviderCoolingDown("groq")) {
       console.log("[AI Routing] GROQ_API_KEY found, initiating Groq fallback routing...");
       try {
         const payload: any = {
@@ -122,6 +243,8 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
         }
         throw new Error("Groq parsed JSON with missing choice output contents");
       } catch (groqError: any) {
+        const msg = groqError?.message || String(groqError);
+        if (msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("timeout")) coolDownProvider("groq");
         console.error("[AI Routing] Groq backup routing error:", groqError?.message || groqError);
       }
     } else {
@@ -130,7 +253,7 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
 
     // 3. Third choice: OpenRouter API Fallback
     const openrouterKey = process.env.OPENROUTER_API_KEY;
-    if (openrouterKey) {
+    if (openrouterKey && !isProviderCoolingDown("openrouter")) {
       console.log("[AI Routing] OPENROUTER_API_KEY found, initiating OpenRouter fallback routing...");
       try {
         const payload: any = {
@@ -173,6 +296,8 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
         }
         throw new Error("OpenRouter parsed JSON with missing choice output contents");
       } catch (orError: any) {
+        const msg = orError?.message || String(orError);
+        if (msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("timeout")) coolDownProvider("openrouter");
         console.error("[AI Routing] OpenRouter backup routing error:", orError?.message || orError);
       }
     } else {
@@ -187,11 +312,84 @@ async function callAIPortable(prompt: string, isJson: boolean = false, useSearch
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const allowedOrigins = (process.env.CORS_ORIGINS || process.env.APP_URL || "")
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
 
-  app.use(express.json());
+  app.set("trust proxy", 1);
+  app.disable("x-powered-by");
+  app.use((req, res, next) => {
+    (req as any).requestId = req.headers["x-request-id"] || crypto.randomUUID();
+    res.setHeader("x-request-id", (req as any).requestId);
+    next();
+  });
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    }
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
+  app.use(express.json({ limit: "64kb" }));
+  app.use((req, res, next) => {
+    const started = Date.now();
+    res.on("finish", () => {
+      console.log(JSON.stringify({
+        level: res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info",
+        at: nowIso(),
+        requestId: (req as any).requestId,
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        durationMs: Date.now() - started,
+      }));
+    });
+    next();
+  });
+
+  const apiLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: parseInt(process.env.API_RATE_LIMIT_PER_MIN || "120", 10),
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const aiLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: parseInt(process.env.AI_RATE_LIMIT_PER_MIN || "12", 10),
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many AI requests. Please wait a moment and try again." },
+  });
+
+  app.use("/api", apiLimiter);
 
   app.get("/api/v1/health", (req, res) => {
     res.json({ status: "ok", mode: process.env.NODE_ENV });
+  });
+
+  app.get("/api/v1/ready", (req, res) => {
+    const configured = {
+      gemini: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY),
+      supabaseUrl: Boolean(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
+      cacheTtlMs: CACHE_TTL_MS,
+    };
+    res.status(configured.gemini ? 200 : 503).json({
+      status: configured.gemini ? "ready" : "degraded",
+      mode: process.env.NODE_ENV,
+      configured,
+      cacheSize: analysisCache.size,
+    });
   });
 
   // Load JSON data at startup
@@ -205,24 +403,27 @@ async function startServer() {
   }
 
   // API Routes
-  app.post("/api/v1/conversation/question", async (req, res) => {
+  app.post("/api/v1/conversation/question", aiLimiter, async (req, res) => {
+    const body = validateBody(conversationSchema, req, res);
+    if (!body) return;
     try {
-      const lang = req.body?.lang || 'id';
+      const lang = body.lang || 'id';
       const isEn = lang === 'en';
-      if (req.body.question_index === 2) {
+      if (body.question_index === 2) {
         const prompt = isEn
-          ? `User answered Q1 (project they are proud of): "${req.body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer. Present all questions and onboarding tips entirely in professional, encouraging English language.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`
-          : `User answered Q1 (project they are proud of): "${req.body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`;
+          ? `User answered Q1 (project they are proud of): "${body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer. Present all questions and onboarding tips entirely in professional, encouraging English language.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`
+          : `User answered Q1 (project they are proud of): "${body.previous_answer}"\nGenerate Q2 asking about what specific task engages them for hours, tailored to their Q1 answer.\n\nReturn JSON ONLY: {"question": "...", "tip": "..."}`;
         const aiRes = await callAIPortable(prompt, true, false);
-        const text = aiRes.text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const text = cleanJsonText(aiRes.text);
         const data = JSON.parse(text);
+        logInfo(req, "conversation_question_generated", { source: aiRes.source });
         res.json(data);
         return;
       }
       res.json({ question: isEn ? "Static Question" : "Pertanyaan statis", tip: "..." });
     } catch (e) {
-      console.error("Conversation API failed to generate with AI:", e);
-      const isEn = req.body?.lang === 'en';
+      logWarn(req, "conversation_question_fallback", { reason: (e as any)?.message || String(e) });
+      const isEn = body.lang === 'en';
       if (isEn) {
         res.json({
           question: "From your story, which part often makes you lose track of time? (e.g., designing visual layouts, troubleshooting backend bugs, or crafting databases)",
@@ -237,11 +438,21 @@ async function startServer() {
     }
   });
 
-  app.post("/api/v1/analysis", async (req, res) => {
-    let sessionId = req.body?.session_id || "session";
+  app.post("/api/v1/analysis", aiLimiter, async (req, res) => {
+    const body = validateBody(analysisSchema, req, res);
+    if (!body) return;
+    let sessionId = body.session_id;
+    const cacheKey = hashPayload({ answers: body.answers.map(answer => answer.toLowerCase()), lang: body.lang });
+    const cached = getCachedAnalysis(cacheKey);
+    if (cached) {
+      logInfo(req, "analysis_cache_hit");
+      res.setHeader("x-pathfinder-cache", "hit");
+      return res.json({ ...cached, session_id: sessionId, cache_status: "hit" });
+    }
+    res.setHeader("x-pathfinder-cache", "miss");
     try {
-      const answers = req.body?.answers || [];
-      const lang = req.body?.lang || 'id';
+      const answers = body.answers;
+      const lang = body.lang || 'id';
       const isEn = lang === 'en';
 
       // 1. Extract Signals & Match Roles
@@ -286,10 +497,10 @@ async function startServer() {
 
       const aiRes = await callAIPortable(prompt, true, true);
 
-      let text = aiRes.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let text = cleanJsonText(aiRes.text);
       const resultObj = JSON.parse(text);
 
-      res.json({
+      const responseBody = {
         session_id: sessionId,
         user_name: resultObj.user_name || answers[0] || "Kamu",
         readiness_score: resultObj.readiness_score || 70,
@@ -309,12 +520,15 @@ async function startServer() {
           { title: "BI Analyst Intern", company: "Simulated Tokopedia", location: "Jakarta", match: 74, type: "Internship (Sample)", is_fallback: true },
           { title: "Data Operations", company: "Simulated Sayurbox", location: "Bandung", match: 68, type: "Full-time (Sample)", is_fallback: true }
         ]
-      });
+      };
+      setCachedAnalysis(cacheKey, responseBody);
+      logInfo(req, "analysis_generated", { source: aiRes.source, isLive: responseBody.is_live });
+      res.json(responseBody);
 
     } catch (e) {
-      console.error("Gemini failed, using dynamic local analyzer fallback:", e);
-      const answers = req.body?.answers || [];
-      const lang = req.body?.lang || 'id';
+      logWarn(req, "analysis_fallback", { reason: (e as any)?.message || String(e) });
+      const answers = body.answers;
+      const lang = body.lang || 'id';
       const isEn = lang === 'en';
       const uName = answers[0]?.trim() || "Kamu";
       const q1Content = (answers[1] || "").trim().toLowerCase();
@@ -652,7 +866,7 @@ async function startServer() {
         ];
       }
 
-      res.json({
+      const fallbackBody = {
         session_id: sessionId,
         user_name: uName,
         readiness_score: 75,
@@ -682,13 +896,17 @@ async function startServer() {
         is_live: false,
         fetched_at: new Date().toISOString(),
         live_jobs: liveJobs.map(j => ({ ...j, is_fallback: true, company: "Simulated " + j.company }))
-      });
+      };
+      setCachedAnalysis(cacheKey, fallbackBody);
+      res.json(fallbackBody);
     }
   });
 
-  app.post("/api/v1/chat", async (req, res) => {
+  app.post("/api/v1/chat", aiLimiter, async (req, res) => {
+    const body = validateBody(chatSchema, req, res);
+    if (!body) return;
     try {
-      const { message, sessionData, lang, mentorStyle } = req.body;
+      const { message, sessionData, lang, mentorStyle } = body;
       const isEn = lang === 'en';
       const tone = mentorStyle === 'profesional' 
         ? (isEn ? "professional, formal, and focused" : "profesional, baku, dan terfokus") 
@@ -712,13 +930,14 @@ IMPORTANT: Your response must be ONLY valid JSON matching this schema exactly. N
 
       const aiRes = await callAIPortable(prompt, true, false);
 
-      let text = aiRes.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let text = cleanJsonText(aiRes.text);
       const resultObj = JSON.parse(text);
+      logInfo(req, "chat_generated", { source: aiRes.source });
       res.json(resultObj);
     } catch (e) {
-      console.error(e);
+      logWarn(req, "chat_fallback", { reason: (e as any)?.message || String(e) });
       res.json({
-        reply: "Maaf ya, koneksi Pathy lagi gangguan sebentar. Nggak bisa update dashboard saat ini.",
+        reply: fallbackChatReply(body.message, body.sessionData, body.lang),
         updatedData: null
       });
     }

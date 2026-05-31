@@ -5,15 +5,40 @@ export default function AuthCallbackScreen() {
   const [errorStatus, setErrorStatus] = useState(false);
 
   useEffect(() => {
+    if (!supabase?.auth) {
+      setErrorStatus(true);
+      return undefined;
+    }
+
+    const completeAuth = (session) => {
+      if (!session) return;
+      sessionStorage.setItem('logged_in', 'true');
+      localStorage.setItem('pathy_shuffles_left', '3');
+
+      if (window.opener) {
+        window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, window.location.origin);
+        setTimeout(() => window.close(), 120);
+      } else {
+        window.location.href = '/results';
+      }
+    };
+
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (code && supabase.auth.exchangeCodeForSession) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (error) {
+          console.error("Auth exchange error:", error);
+          setErrorStatus(true);
+          return;
+        }
+        completeAuth(data?.session);
+      });
+    }
+
     // Attempt to get the session after redirect
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (session) {
-        if (window.opener) {
-          window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, window.location.origin);
-          setTimeout(() => window.close(), 100);
-        } else {
-          window.location.href = '/results';
-        }
+        completeAuth(session);
       } else if (error) {
         console.error("AuthCallback Error:", error);
         setErrorStatus(true);
@@ -23,12 +48,7 @@ export default function AuthCallbackScreen() {
     // Listen for auth state change to capture the flow as tokens are processed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        if (window.opener) {
-          window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, window.location.origin);
-          setTimeout(() => window.close(), 100);
-        } else {
-          window.location.href = '/results';
-        }
+        completeAuth(session);
       }
     });
 

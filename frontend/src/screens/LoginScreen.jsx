@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../utils/supabase';
+import { hasAnalysisHistory, isAuthBypassEnabled, supabase, syncSessionDataToSupabase } from '../utils/supabase';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 
@@ -11,6 +11,37 @@ export default function LoginScreen() {
   const lang = localStorage.getItem('pref_lang') || 'id';
   const isEn = lang === 'en';
 
+  const finishAuthenticatedFlow = async () => {
+    const cachedSession = JSON.parse(sessionStorage.getItem('pathfinder_session') || 'null');
+    const transferredSession = JSON.parse(localStorage.getItem('pathfinder_session_transfer') || 'null');
+    const activeSession = cachedSession?.results ? cachedSession : transferredSession;
+
+    sessionStorage.setItem('logged_in', 'true');
+    localStorage.setItem('pathy_shuffles_left', '3');
+
+    if (activeSession?.results) {
+      sessionStorage.setItem('pathfinder_session', JSON.stringify(activeSession));
+      await syncSessionDataToSupabase(activeSession.results);
+      localStorage.removeItem('pathfinder_session_transfer');
+      toast.success(isEn ? "Signed in and saved your current analysis." : "Berhasil masuk dan menyimpan hasil analisismu.");
+      navigate('/results');
+      return;
+    }
+
+    const hasHistory = await hasAnalysisHistory();
+    if (hasHistory) {
+      toast.success(isEn ? "Welcome back. Loading your latest analysis." : "Selamat datang kembali. Memuat analisis terakhirmu.");
+      navigate('/results');
+      return;
+    }
+
+    await supabase?.auth?.signOut();
+    sessionStorage.removeItem('logged_in');
+    localStorage.removeItem('pathy_logged_in');
+    toast.error(isEn ? "Please complete the career interview first so PathFinder has a profile to save." : "Silakan selesaikan interview karir dulu supaya PathFinder punya profil yang bisa disimpan.");
+    navigate('/conversation');
+  };
+
   useEffect(() => {
     const handleOAuthMessage = async (event) => {
       if (event.origin !== window.location.origin) return;
@@ -18,46 +49,13 @@ export default function LoginScreen() {
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
         setIsLoadingGoogle(true);
         if (supabase) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              const { data, error } = await supabase
-                .from('analyses')
-                .select('id')
-                .eq('user_id', session.user.id)
-                .limit(1)
-                .maybeSingle();
-
-              if (error) {
-                console.error("Error checking user analysis:", error);
-              }
-
-              if (error || !data) {
-                await supabase.auth.signOut();
-                sessionStorage.removeItem('logged_in');
-                toast.error(isEn ? "This Google account does not have a profiling history yet. Please complete the career interview on the home page first." : "Akun Google ini belum memiliki riwayat analisis. Silakan ikuti onboarding/analisis terlebih dahulu di halaman utama sebelum mendaftar.");
-                setIsLoadingGoogle(false);
-                return;
-              }
-
-              sessionStorage.setItem('logged_in', 'true');
-              localStorage.setItem('pathy_shuffles_left', '3');
-              toast.success(isEn ? "Successfully signed in with Google!" : "Berhasil masuk dengan akun Google!");
-              setIsLoadingGoogle(false);
-              navigate('/results');
-              return;
-            }
-          } catch (err) {
-            console.error("Auth redirect error checks", err);
-          }
+          await finishAuthenticatedFlow();
+          setIsLoadingGoogle(false);
+          return;
         }
-        
-        // Default fallback if session check failed or supabase is not active
-        sessionStorage.setItem('logged_in', 'true');
-        localStorage.setItem('pathy_shuffles_left', '3');
-        toast.success(isEn ? "Successfully signed in!" : "Berhasil masuk!");
+
+        toast.error(isEn ? "Authentication is unavailable in this environment." : "Autentikasi tidak tersedia di environment ini.");
         setIsLoadingGoogle(false);
-        navigate('/results');
       }
     };
 
@@ -74,10 +72,7 @@ export default function LoginScreen() {
 
     try {
       setIsLoadingGoogle(true);
-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const isPreviewUrl = window.location.hostname.includes('run.app') || window.location.hostname.includes('googleusercontent');
-      
-      if (isSimulated || isPreviewUrl) {
+      if (isAuthBypassEnabled) {
         // Fast direct path for virtual sandbox or preview environments lacking valid redirect configs
         sessionStorage.setItem('logged_in', 'true');
         localStorage.setItem('pathy_logged_in', 'true');
@@ -87,7 +82,7 @@ export default function LoginScreen() {
         toast.success(isEn ? "Successfully signed in with Google (Preview Bypass)!" : "Berhasil masuk dengan akun Google (Bypass Preview)!");
         setIsLoadingGoogle(false);
         setTimeout(() => {
-          navigate('/results');
+          finishAuthenticatedFlow();
         }, 600);
         return;
       }
@@ -138,10 +133,7 @@ export default function LoginScreen() {
 
     try {
       setIsLoadingMagic(true);
-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const isPreviewUrl = window.location.hostname.includes('run.app') || window.location.hostname.includes('googleusercontent');
-      
-      if (isSimulated || isPreviewUrl) {
+      if (isAuthBypassEnabled) {
         // Fast direct login for virtual magic link
         sessionStorage.setItem('logged_in', 'true');
         localStorage.setItem('pathy_logged_in', 'true');
@@ -152,7 +144,7 @@ export default function LoginScreen() {
         
         toast.success(isEn ? `Preview Bypass: Logged in automatically as ${email}!` : `Bypass Preview: Otomatis masuk sebagai ${email}!`);
         setTimeout(() => {
-          navigate('/results');
+          finishAuthenticatedFlow();
         }, 800);
         return;
       }

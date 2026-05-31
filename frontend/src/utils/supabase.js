@@ -2,6 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const hasBrowser = typeof window !== 'undefined';
+const previewHost = hasBrowser && (
+  window.location.hostname.includes('googleusercontent') ||
+  window.location.hostname.includes('idx.dev')
+);
+const explicitAuthBypass =
+  import.meta.env.VITE_ENABLE_AUTH_BYPASS === 'true' ||
+  import.meta.env.VITE_PREVIEW_AUTH_BYPASS === 'true';
 
 // Real client initialization if keys are present
 const realSupabase = supabaseUrl && supabaseAnonKey 
@@ -163,16 +171,65 @@ const simulatedSupabase = {
 };
 
 export const isSupabaseConfigured = Boolean(realSupabase);
-export const supabase = realSupabase || (import.meta.env.MODE === 'production' || import.meta.env.PROD ? null : simulatedSupabase);
+export const isAuthBypassEnabled = !realSupabase && (previewHost || explicitAuthBypass || import.meta.env.DEV);
+export const supabase = realSupabase || (isAuthBypassEnabled ? simulatedSupabase : null);
+
+const getActiveSessionId = (sessionData = {}) => {
+  if (sessionData.session_id) return sessionData.session_id;
+
+  try {
+    const cached = JSON.parse(sessionStorage.getItem('pathfinder_session') || '{}');
+    if (cached.session_id) return cached.session_id;
+  } catch (err) {
+    console.warn("Could not read active session id", err);
+  }
+
+  const existing = sessionStorage.getItem('pathfinder_session_id');
+  if (existing) return existing;
+
+  const generated = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  sessionStorage.setItem('pathfinder_session_id', generated);
+  return generated;
+};
+
+const ensureUserProfile = async (user) => {
+  if (!realSupabase || !user?.id) return true;
+
+  const name =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    localStorage.getItem('pathy_user_name') ||
+    (user.email ? user.email.split('@')[0] : 'PathFinder User');
+
+  const { error } = await realSupabase
+    .from('users')
+    .upsert({
+      id: user.id,
+      email: user.email || null,
+      name,
+      google_id: user.app_metadata?.provider === 'google' ? user.identities?.[0]?.id || null : null,
+      last_login: new Date().toISOString(),
+    }, { onConflict: 'id' });
+
+  if (error) {
+    console.warn("Could not ensure Supabase profile row.", error);
+    return false;
+  }
+
+  return true;
+};
 
 export const saveResultToSupabase = async (sessionData) => {
   if (!supabase) return false;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
+    await ensureUserProfile(user);
 
     const currentLang = localStorage.getItem('pref_lang') || 'id';
-    const finalSessionId = sessionData.session_id || 'local_session_' + Date.now();
+    const finalSessionId = getActiveSessionId(sessionData);
+    sessionStorage.setItem('pathfinder_session_id', finalSessionId);
+    const isLive = sessionData.is_live === true;
 
     const { error } = await supabase
       .from('analyses')
@@ -191,13 +248,13 @@ export const saveResultToSupabase = async (sessionData) => {
         live_jobs: sessionData.live_jobs || [],
         visual_roadmap: sessionData.visual_roadmap || [],
         jobs_source: sessionData.jobs_source || null,
-        is_live: Boolean(sessionData.is_live),
+        is_live: isLive,
         fetched_at: sessionData.fetched_at || new Date().toISOString(),
         job_data_snapshot: {
           jobs_source: sessionData.jobs_source || null,
-          is_live: Boolean(sessionData.is_live),
+          is_live: isLive,
           fetched_at: sessionData.fetched_at || null,
-          fallback_used: sessionData.is_live === false
+          fallback_used: !isLive
         },
         location: sessionData.location || 'Indonesia',
         lang: currentLang,
@@ -213,6 +270,8 @@ export const saveResultToSupabase = async (sessionData) => {
     return false;
   }
 };
+
+export const syncSessionDataToSupabase = saveResultToSupabase;
 
 export const getLatestResultFromSupabase = async () => {
   if (!supabase) return null;
@@ -245,4 +304,42 @@ export const getLatestResultFromSupabase = async () => {
     console.error("Supabase select error", err);
     return null;
   }
+};
+
+export const hasAnalysisHistory = async () => {
+  if (!supabase) return false;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data, error } = await supabase
+      .from('analyses')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Could not check analysis history.", error);
+      return false;
+    }
+
+    return Boolean(data);
+  } catch (err) {
+    console.error("Analysis history check failed", err);
+    return false;
+  }
+};
+
+export const signOutPathfinder = async () => {
+  try {
+    if (supabase?.auth) await supabase.auth.signOut();
+  } catch (err) {
+    console.warn("Supabase sign out failed", err);
+  }
+
+  sessionStorage.removeItem('logged_in');
+  localStorage.removeItem('pathy_logged_in');
+  localStorage.removeItem('pathy_user_email');
+  localStorage.removeItem('pathy_user_name');
 };

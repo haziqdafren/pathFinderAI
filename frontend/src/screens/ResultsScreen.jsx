@@ -413,6 +413,34 @@ export default function ResultsScreen() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const handleExportReport = async () => {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      source: 'PathFinder AI',
+      report: data,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pathfinder-report-${(data.user_name || 'user').toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    const { toast } = await import('sonner');
+    toast.success(isEn ? "Report exported as JSON." : "Laporan berhasil diekspor sebagai JSON.");
+  };
+
+  const handleLogout = async () => {
+    const { signOutPathfinder } = await import('../utils/supabase');
+    await signOutPathfinder();
+    const { toast } = await import('sonner');
+    toast.success(isEn ? "Signed out. Your local analysis remains on this device." : "Berhasil keluar. Analisis lokal tetap tersimpan di perangkat ini.");
+    window.location.href = '/';
+  };
+
   return (
     <div className="min-h-screen bg-cream flex flex-col md:flex-row font-sans">
       <aside className="w-full md:w-[70px] bg-ink text-white flex flex-row md:flex-col items-center py-3 md:py-[22px] px-4 md:px-0 shrink-0 border-b md:border-b-0 border-ink-3">
@@ -458,16 +486,9 @@ export default function ResultsScreen() {
               {isEn ? "Session Status" : "Kondisi Sesi"}
             </span>
             <span className="font-semibold text-white">{data.user_name} ({isLoggedIn ? (isEn ? 'Active Account' : 'Akun Aktif') : (isEn ? 'Guest Session' : 'Sesi Tamu')})</span>
-            {isLoggedIn ? (
-              <button 
-                onClick={async () => {
-                  try {
-                    const { supabase } = await import('../utils/supabase');
-                    if (supabase) await supabase.auth.signOut();
-                  } catch(e) {}
-                  sessionStorage.removeItem('logged_in'); 
-                  window.location.href='/'; 
-                }}
+	            {isLoggedIn ? (
+	              <button 
+	                onClick={handleLogout}
                 className="bg-transparent border-0 text-orange font-medium text-left p-0 cursor-pointer hover:underline mt-0.5"
               >
                 {isEn ? "Sign Out" : "Keluar Akun"}
@@ -517,7 +538,7 @@ export default function ResultsScreen() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               {isEn ? "Email via Gmail" : "Kirim via Gmail"}
             </button>
-            <button className="bg-white border border-border rounded-full py-[9px] px-4 text-[13px] text-ink inline-flex items-center gap-2 hover:bg-cream-2 transition-colors cursor-pointer">
+            <button onClick={handleExportReport} className="bg-white border border-border rounded-full py-[9px] px-4 text-[13px] text-ink inline-flex items-center gap-2 hover:bg-cream-2 transition-colors cursor-pointer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               {isEn ? "Export" : "Ekspor"}
             </button>
@@ -992,9 +1013,18 @@ export default function ResultsScreen() {
                 </select>
               </div>
 
-              <div className="pt-4 border-t border-dashed border-border flex flex-col gap-2.5">
-                <button 
-                  onClick={() => {
+	              <div className="pt-4 border-t border-dashed border-border flex flex-col gap-2.5">
+	                {isLoggedIn && (
+	                  <button 
+	                    onClick={handleLogout}
+	                    className="w-full bg-white border border-border text-ink rounded-xl py-3 text-[13.5px] font-medium hover:bg-cream transition-colors cursor-pointer text-center"
+	                  >
+	                    {isEn ? "Log Out" : "Keluar Akun"}
+	                  </button>
+	                )}
+
+	                <button 
+	                  onClick={() => {
                     const confirmReset = window.confirm(isEn ? "Are you sure you want to restart onboarding? Your career analytics history will be erased." : "Apakah kamu yakin ingin mengulang onboarding? Riwayat analisis karir lokal kamu akan dihapus.");
                     if (confirmReset) {
                       sessionStorage.removeItem('pathfinder_session');

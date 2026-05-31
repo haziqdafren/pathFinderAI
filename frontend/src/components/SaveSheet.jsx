@@ -88,15 +88,19 @@ export default function SaveSheet() {
 
   const handleGoogleSubmit = async () => {
     try {
-      const { supabase } = await import('../utils/supabase');
-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const { isAuthBypassEnabled, supabase, syncSessionDataToSupabase } = await import('../utils/supabase');
+      if (!supabase) {
+        toast.error(isEn ? "Authentication is not configured in this deployment yet." : "Autentikasi belum dikonfigurasi di deployment ini.");
+        return;
+      }
       
-      if (isSimulated) {
+      if (isAuthBypassEnabled) {
         sessionStorage.setItem('logged_in', 'true');
         localStorage.setItem('pathy_logged_in', 'true');
         localStorage.setItem('pathy_user_name', userName || (isEn ? 'Guest' : 'Tamu'));
         localStorage.setItem('pathy_user_email', 'guest@pathfinder.com');
         localStorage.setItem('pathy_shuffles_left', '3');
+        if (sessionData) await syncSessionDataToSupabase(sessionData);
         toast.success(isEn ? "Successfully signed in with Google (Virtual Mode)!" : "Berhasil masuk dengan Google (Virtual Mode)!");
         closeSheet();
         setTimeout(() => {
@@ -134,11 +138,6 @@ export default function SaveSheet() {
     } catch (err) {
       console.error(err);
       toast.error((isEn ? 'Login failed: ' : 'Login gagal: ') + err.message);
-      // Fallback
-      sessionStorage.setItem('logged_in', 'true');
-      toast.success(isEn ? "Entered as guest!" : "Masuk sebagai tamu tersaring!");
-      closeSheet();
-      window.location.reload();
     }
   };
 
@@ -147,10 +146,13 @@ export default function SaveSheet() {
     if (!email) return;
 
     try {
-      const { supabase } = await import('../utils/supabase');
-      const isSimulated = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const { isAuthBypassEnabled, supabase, syncSessionDataToSupabase } = await import('../utils/supabase');
+      if (!supabase) {
+        toast.error(isEn ? "Authentication is not configured in this deployment yet." : "Autentikasi belum dikonfigurasi di deployment ini.");
+        return;
+      }
       
-      if (isSimulated) {
+      if (isAuthBypassEnabled) {
         sessionStorage.setItem('logged_in', 'true');
         localStorage.setItem('pathy_logged_in', 'true');
         localStorage.setItem('pathy_user_email', email);
@@ -158,6 +160,7 @@ export default function SaveSheet() {
         const capitalized = namePart.charAt(0).toUpperCase() + namePart.slice(1);
         localStorage.setItem('pathy_user_name', capitalized);
         localStorage.setItem('pathy_shuffles_left', '3');
+        if (sessionData) await syncSessionDataToSupabase(sessionData);
         
         toast.success(isEn ? `Successfully signed in as ${email} (Virtual Mode)!` : `Berhasil masuk sebagai ${email} (Virtual Mode)!`);
         closeSheet();
@@ -182,11 +185,6 @@ export default function SaveSheet() {
     } catch (err) {
       console.error(err);
       toast.error((isEn ? 'Failed to send email: ' : 'Gagal mengirim email: ') + err.message);
-      // Fallback
-      sessionStorage.setItem('logged_in', 'true');
-      toast.success(isEn ? `Entered with email: ${email}` : `Masuk dengan email: ${email}`);
-      closeSheet();
-      window.location.reload();
     }
   };
 
@@ -281,11 +279,9 @@ export default function SaveSheet() {
                   <button 
                     onClick={async () => {
                       try {
-                        const { supabase } = await import('../utils/supabase');
-                        if (supabase && supabase.auth) await supabase.auth.signOut();
+                        const { signOutPathfinder } = await import('../utils/supabase');
+                        await signOutPathfinder();
                       } catch(e) {}
-                      sessionStorage.removeItem('logged_in');
-                      localStorage.removeItem('pathy_logged_in');
                       toast.success(isEn ? "Successfully logged out from account session." : "Berhasil keluar dari sesi akun.");
                       closeSheet();
                       setTimeout(() => {

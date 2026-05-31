@@ -72,6 +72,9 @@ alter table milestones enable row level security;
 create policy "Users can view their own profile" on users
   for select using (auth.uid() = id);
 
+create policy "Users can create their own profile" on users
+  for insert with check (auth.uid() = id);
+
 create policy "Users can update their own profile" on users
   for update using (auth.uid() = id);
 

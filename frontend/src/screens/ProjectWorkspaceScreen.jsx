@@ -381,6 +381,10 @@ export default function ProjectWorkspaceScreen() {
               project: row.project_recommendation || row.project || {},
               visual_roadmap: row.visual_roadmap || [],
               jobs_analyzed: row.jobs_analyzed || 0,
+              jobs_source: row.jobs_source || null,
+              is_live: typeof row.is_live === 'boolean' ? row.is_live : false,
+              fetched_at: row.fetched_at || null,
+              job_data_snapshot: row.job_data_snapshot || null,
               live_jobs: row.live_jobs || []
             };
             
@@ -443,6 +447,14 @@ export default function ProjectWorkspaceScreen() {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
   };
 
+  const handleLogout = async () => {
+    const { signOutPathfinder } = await import('../utils/supabase');
+    await signOutPathfinder();
+    const { toast } = await import('sonner');
+    toast.success(isEn ? "Signed out. Your local project progress remains on this device." : "Berhasil keluar. Progress proyek lokal tetap tersimpan di perangkat ini.");
+    window.location.href = '/';
+  };
+
   const progress = tasks.length > 0 ? Math.round((tasks.filter(t => t.done).length / tasks.length) * 100) : 0;
 
   if (isLoading) {
@@ -491,16 +503,9 @@ export default function ProjectWorkspaceScreen() {
           <div className="absolute bottom-10 left-10 md:bottom-2 md:left-12 bg-ink text-white text-[11px] py-2.5 px-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity whitespace-nowrap border border-ink-3 flex flex-col gap-1.5 z-40 shadow-lg">
             <span className="font-mono text-[9px] text-white/55 uppercase tracking-wider block">{isEn ? "Session Status" : "Kondisi Sesi"}</span>
             <span className="font-semibold text-white">{data.user_name} ({isLoggedIn ? (isEn ? 'Active Account' : 'Akun Aktif') : (isEn ? 'Guest Session' : 'Sesi Tamu')})</span>
-            {isLoggedIn ? (
-              <button 
-                onClick={async () => {
-                  try {
-                    const { supabase } = await import('../utils/supabase');
-                    if (supabase) await supabase.auth.signOut();
-                  } catch(e) {}
-                  sessionStorage.removeItem('logged_in'); 
-                  window.location.href='/'; 
-                }}
+	            {isLoggedIn ? (
+	              <button 
+	                onClick={handleLogout}
                 className="bg-transparent border-0 text-orange font-medium text-left p-0 cursor-pointer hover:underline mt-0.5"
               >
                 {isEn ? "Sign Out" : "Keluar Akun"}
@@ -703,6 +708,15 @@ export default function ProjectWorkspaceScreen() {
               </div>
 
               <div className="pt-4 border-t border-dashed border-border flex flex-col gap-2.5">
+                {isLoggedIn && (
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full bg-white border border-border text-ink rounded-xl py-3 text-[13.5px] font-medium hover:bg-cream transition-colors cursor-pointer text-center"
+                  >
+                    {isEn ? "Log Out" : "Keluar Akun"}
+                  </button>
+                )}
+
                 <button 
                   onClick={() => {
                     const confirmReset = window.confirm(isEn ? "Are you sure you want to restart onboarding? Your career analytics history will be erased." : "Apakah kamu yakin ingin mengulang onboarding? Riwayat analisis karir lokal kamu akan dihapus.");

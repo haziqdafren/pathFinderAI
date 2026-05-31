@@ -1,10 +1,27 @@
 import axios from 'axios';
 
 const api = axios.create({
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+const getApiErrorMessage = (err, isEn) => {
+  if (err?.response?.status === 429) {
+    return isEn
+      ? "PathFinder is receiving too many requests right now. Please wait a moment and try again."
+      : "PathFinder sedang menerima terlalu banyak request. Tunggu sebentar lalu coba lagi.";
+  }
+  if (err?.code === 'ECONNABORTED') {
+    return isEn
+      ? "The analysis took too long. Showing safe offline guidance for now."
+      : "Analisis terlalu lama. Untuk sementara PathFinder menampilkan panduan offline yang aman.";
+  }
+  return isEn
+    ? "PathFinder is in degraded mode. Showing offline guidance."
+    : "PathFinder sedang dalam mode terbatas. Menampilkan panduan offline.";
+};
 
 export const getNextQuestion = async (index, prevAnswer, lang) => {
   const activeLang = lang || localStorage.getItem('pref_lang') || 'id';
@@ -30,6 +47,7 @@ export const getNextQuestion = async (index, prevAnswer, lang) => {
 
 export const analyzeProfile = async (answers, sessionId, lang) => {
   const activeLang = lang || localStorage.getItem('pref_lang') || 'id';
+  const isEn = activeLang === 'en';
   try {
     const { data } = await api.post('/api/v1/analysis', {
       answers,
@@ -38,9 +56,10 @@ export const analyzeProfile = async (answers, sessionId, lang) => {
     });
     return data;
   } catch (err) {
-    // Mock response for preview / Network failure
+    const degradedMessage = getApiErrorMessage(err, isEn);
     return {
-      user_name: "Kamu",
+      session_id: sessionId,
+      user_name: answers?.[0] || (isEn ? "Friend" : "Kamu"),
       readiness_score: 75,
       top_roles: [
         { rank: 1, role_name: "Junior Web Developer", role_id: "frontend_dev", fit_score: 75, skills_shown: ["HTML/CSS"], job_count: 12 },
@@ -48,8 +67,8 @@ export const analyzeProfile = async (answers, sessionId, lang) => {
       ],
       signal_chips: ["suka ngulik", "problem solver"],
       skill_gaps: [{ skill: "React Fundamentals", pct: 75 }],
-      scout_message: "Pathy sedang dalam mode offline. Jangan khawatir, rekomendasi awal ini kami buat berdasarkan minat belajarmu secara umum. Coba muat ulang halaman ini untuk hasil yang terhubung langsung dengan AI.",
-      follow_up_questions: ["Apa framework andalanmu saat ini?", "Tertarik belajar backend juga?"],
+      scout_message: degradedMessage,
+      follow_up_questions: isEn ? ["What should I build first?", "How do I make this portfolio-ready?"] : ["Apa yang sebaiknya aku bangun dulu?", "Gimana bikin ini siap jadi portfolio?"],
       project: {
         name: "Personal Portfolio Website",
         dataset_name: "Your Profile Data",
@@ -58,9 +77,11 @@ export const analyzeProfile = async (answers, sessionId, lang) => {
       },
       jobs_analyzed: 20,
       jobs_source: "Offline Data",
+      is_live: false,
+      fetched_at: new Date().toISOString(),
       live_jobs: [
-        { title: "Junior Web Developer", company: "Tech Indo", location: "Jakarta", match: 75, type: "Full-time" },
-        { title: "IT Support Staff", company: "Local Corp", location: "Bandung", match: 60, type: "Contract" }
+        { title: "Junior Web Developer", company: "Sample Tech Indo", location: "Jakarta", match: 75, type: "Full-time (Sample)", is_fallback: true },
+        { title: "IT Support Staff", company: "Sample Local Corp", location: "Bandung", match: 60, type: "Contract (Sample)", is_fallback: true }
       ]
     };
   }
@@ -75,7 +96,7 @@ export const saveResults = async (sessionId, userId, analysisData) => {
     });
     return data;
   } catch (err) {
-    return { saved: true, analysis_id: "mock" };
+    return { saved: false, analysis_id: null, error: "Save endpoint unavailable" };
   }
 };
 

@@ -9,20 +9,20 @@ const INITIAL_QUESTIONS = [
     tip: "Cukup nama panggilan, biar Pathy bisa manggil kamu dengan enak dan lebih personal."
   },
   {
-    title: "Ceritain proyek IT atau tech yang pernah kamu buat, dan paling kamu banggakan — walau kecil.",
-    tip: "Nggak harus proyek \"keren\". Bisa website sederhana, script data, atau desain UI Figma tugas kuliah. Yang penting kamu pernah ngerjain sampai jadi."
+    title: "Ceritain satu bukti kerja digital/IT yang pernah kamu buat atau bantu selesaikan.",
+    tip: "Sebutkan konteks, tools, dan hasilnya. Contoh: dashboard Excel, website React, desain Figma, bot, API, CTF, atau tugas kampus yang benar-benar selesai."
   },
   {
     title: "Menyiapkan pertanyaan...",
     tip: "Pathy sedang memikirkan pertanyaan berdasarkan ceritamu."
   },
   {
-    title: "Di mana kamu mau kerja — (Jakarta, Bandung, Remote), atau belum tahu?",
-    tip: "Pathy akan pull lowongan tech jobs live dari lokasi ini. Kalau belum tahu, pilih Jakarta — ekosistem startup paling padat."
+    title: "Lokasi kerja idealmu apa, dan seberapa fleksibel kamu untuk remote/hybrid?",
+    tip: "Jawaban ini dipakai untuk mencocokkan strategi lamaran. Contoh: Jakarta hybrid, Bandung onsite, Remote Indonesia, atau mana saja asal role-nya cocok."
   },
   {
-    title: "Berapa lama lagi kamu targetkan bisa magang atau mulai kerja di tech?",
-    tip: "Jujur aja. Ini buat atur prioritas rencana persiapanmu — kita kejar bareng supaya siap."
+    title: "Kapan targetmu siap melamar, dan apa batasan terbesarmu sekarang?",
+    tip: "Contoh batasan: belum punya portfolio, belum pede interview, masih kuliah, laptop terbatas, English, atau belum tahu role yang paling cocok."
   }
 ];
 
@@ -32,20 +32,20 @@ const EN_INITIAL_QUESTIONS = [
     tip: "Just your nickname is fine, so Pathy can address you personally and comfortably."
   },
   {
-    title: "Tell me about an IT or tech project you've built that you're most proud of—even if small.",
-    tip: "It doesn't have to be complex. A simple website, a spreadsheet utility, a game, or a Figma design. What matters is you built it."
+    title: "Tell me about one concrete digital/IT proof of work you built or helped finish.",
+    tip: "Mention the context, tools, and outcome. Examples: Excel dashboard, React site, Figma flow, bot, API, CTF write-up, or a completed class project."
   },
   {
     title: "Preparing question...",
     tip: "Pathy is thinking of a customized question based on your project description."
   },
   {
-    title: "Where would you like to work—(Jakarta, Bandung, Remote), or not sure yet?",
-    tip: "Pathy will query live job boards for this location. If unsure, type Jakarta—the densest startup cluster."
+    title: "What is your ideal work location, and how flexible are you with remote/hybrid work?",
+    tip: "This shapes the application strategy. Example: Jakarta hybrid, Bandung onsite, Remote Indonesia, or anywhere if the role is a strong match."
   },
   {
-    title: "When do you target to start an internship or job in tech?",
-    tip: "Be honest. This helps us customize your preparation timeline so you can succeed sooner."
+    title: "When do you want to be ready to apply, and what is your biggest blocker right now?",
+    tip: "Examples: no portfolio yet, interview confidence, still in college, limited laptop, English, or not sure which role fits best."
   }
 ];
 
@@ -53,6 +53,8 @@ const STEP_SUGGESTIONS = {
   1: [
     "Pernah bikin website portofolio simple pakai HTML, CSS, JavaScript",
     "Saya pernah bikin aplikasi kasir sederhana pakai Python / Java",
+    "Saya bikin dashboard Excel/Looker untuk merapikan data penjualan dan menemukan produk paling laku",
+    "Saya bantu tim kampus membuat landing page acara, dari layout sampai deploy",
     "Dulu sempat bikin REST API sederhana pakai Express dan Node.js",
     "Pernah bikin bot Discord / Telegram sederhana buat server temen",
     "Pernah nyoba clone UI aplikasi (Instagram/Twitter) pakai React/Flutter",
@@ -90,13 +92,15 @@ const STEP_SUGGESTIONS = {
     "Sering kelupaan waktu kalau dapet task belajar framework / AI baru"
   ],
   3: ["Jakarta", "Bandung", "Surabaya", "Yogyakarta", "Semarang", "Malang", "Bali", "Batam", "Remote", "Luar Negeri", "Mana aja asal perusahaannya cocok"],
-  4: ["Secepatnya bulan ini", "Kira-kira 1-3 bulan lagi", "Semester depan", "Lulusnya masih tahun depan", "Lagi nggak buru-buru, cuma mau mulai prepare dulu aja"]
+  4: ["Siap melamar bulan ini, blocker utama portfolio belum rapi", "Kira-kira 1-3 bulan lagi, masih perlu latihan interview", "Semester depan, sekarang masih padat kuliah", "Lulusnya masih tahun depan, ingin bangun portfolio dari sekarang", "Belum buru-buru, masih mencari role paling cocok"]
 };
 
 const EN_STEP_SUGGESTIONS = {
   1: [
     "Built a simple portfolio layout using HTML, CSS, JavaScript",
     "Wrote a simple cashier application with Python / Java",
+    "Built an Excel/Looker dashboard to clean sales data and identify top products",
+    "Helped a campus team ship an event landing page from layout to deployment",
     "Developed a basic REST API using Express and Node.js",
     "Coded a Discord or Telegram bot for a friend's community server",
     "Tried cloning an app's UI layout (like Instagram) with React or Flutter",
@@ -134,7 +138,7 @@ const EN_STEP_SUGGESTIONS = {
     "Instantly lose track of hours when studying a brand-new framework"
   ],
   3: ["Jakarta", "Bandung", "Surabaya", "Yogyakarta", "Remote", "Overseas", "Anywhere matching targets"],
-  4: ["Immediately this month", "Within 1-3 months", "Next semester", "Graduating next year", "No rush, just starting to prepare"]
+  4: ["Ready to apply this month, main blocker is portfolio polish", "Within 1-3 months, still need interview practice", "Next semester, current blocker is college workload", "Graduating next year, want to build portfolio now", "No rush, still exploring the best-fit role"]
 };
 
 // Helper for smarter suggestion filtering
