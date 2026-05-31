@@ -11,6 +11,12 @@ export default function LoginScreen() {
   const lang = localStorage.getItem('pref_lang') || 'id';
   const isEn = lang === 'en';
 
+  // Check if user has done the analysis first
+  const hasSession = Boolean(
+    JSON.parse(sessionStorage.getItem('pathfinder_session') || 'null')?.results ||
+    localStorage.getItem('pathfinder_session_transfer')
+  );
+
   const finishAuthenticatedFlow = async () => {
     const cachedSession = JSON.parse(sessionStorage.getItem('pathfinder_session') || 'null');
     const transferredSession = JSON.parse(localStorage.getItem('pathfinder_session_transfer') || 'null');
@@ -206,6 +212,27 @@ export default function LoginScreen() {
             <h1 className="text-[28px] font-bold tracking-[-0.015em] leading-[1.1] text-ink m-0 mb-6">
               {isEn ? "Sign in to Account" : "Masuk ke Akun"}
             </h1>
+
+            {!hasSession && (
+              <div className="bg-orange/8 border border-orange/25 rounded-xl p-3.5 mb-4">
+                <div className="flex items-start gap-2.5">
+                  <svg className="text-orange shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div>
+                    <p className="text-[12.5px] text-ink-2 leading-relaxed m-0 mb-2">
+                      {isEn
+                        ? "Complete the career analysis first so PathFinder can save your personalized profile."
+                        : "Selesaikan analisis karir dulu agar PathFinder bisa menyimpan profil personalmu."}
+                    </p>
+                    <button
+                      onClick={() => navigate('/conversation')}
+                      className="bg-orange text-white border-0 rounded-lg px-3 py-1.5 text-[12px] font-bold cursor-pointer hover:bg-orange-2 transition-colors"
+                    >
+                      {isEn ? "Start Career Analysis →" : "Mulai Analisis Karir →"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button disabled={isLoadingGoogle} onClick={handleGoogleLogin} className="bg-ink text-white border border-ink rounded-xl px-4 py-3.5 flex items-center gap-3.5 text-[14.5px] w-full text-left transition-colors hover:bg-ink-3 tracking-tight mb-4 cursor-pointer disabled:opacity-70 justify-center font-bold">
               {isLoadingGoogle ? (
