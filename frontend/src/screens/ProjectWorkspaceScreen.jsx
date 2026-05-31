@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PathyChatDrawer from '../components/PathyChatDrawer';
-import GmailShareModal from '../components/GmailShareModal';
 
 const ALTERNATIVE_PROJECTS = {
   data: [
@@ -178,7 +177,6 @@ export default function ProjectWorkspaceScreen() {
   const isEn = lang === 'en';
   const [chatOpen, setChatOpen] = useState(false);
   const [initialMessage, setInitialMessage] = useState('');
-  const [showGmailShare, setShowGmailShare] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   
   // Settings edit states
@@ -653,14 +651,7 @@ export default function ProjectWorkspaceScreen() {
         </span>
       </button>
 
-      {/* Save screens & modals */}
-      <GmailShareModal 
-        isOpen={showGmailShare} 
-        onClose={() => setShowGmailShare(false)} 
-        sessionData={data} 
-      />
-
-      <PathyChatDrawer 
+      <PathyChatDrawer
         isOpen={chatOpen} 
         onClose={() => setChatOpen(false)} 
         initialMessage={initialMessage} 

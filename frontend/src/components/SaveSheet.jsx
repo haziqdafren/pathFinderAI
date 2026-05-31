@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import GmailShareModal from './GmailShareModal';
-
 export default function SaveSheet() {
   const [isOpen, setIsOpen] = useState(false);
   const [sessionData, setSessionData] = useState(null);
   const [userName, setUserName] = useState('Teman');
   const [projectName, setProjectName] = useState('dashboard warung kopi');
   const [email, setEmail] = useState('');
-  const [showGmailShare, setShowGmailShare] = useState(false);
 
   const lang = localStorage.getItem('pref_lang') || 'id';
   const isEn = lang === 'en';
@@ -266,17 +263,7 @@ export default function SaveSheet() {
                   {isEn ? "Your session has been securely matched and saved. Your learning path progress will be safely preserved." : "Sesi kamu sudah berhasil terhubung dan tersimpan dengan aman di database. Progres belajarmu akan terus terjaga."}
                 </p>
                 <div className="flex flex-col gap-2 w-full">
-                  <button 
-                    onClick={() => {
-                      closeSheet();
-                      setShowGmailShare(true);
-                    }}
-                    className="bg-orange text-white border-0 rounded-xl px-4 py-3 text-[13.5px] font-bold tracking-tight text-center hover:bg-orange-2 transition-colors cursor-pointer w-full flex items-center justify-center gap-2"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    {isEn ? "Send Report via Gmail" : "Kirim Laporan via Gmail"}
-                  </button>
-                  <button 
+                  <button
                     onClick={async () => {
                       try {
                         const { signOutPathfinder } = await import('../utils/supabase');
@@ -296,32 +283,7 @@ export default function SaveSheet() {
               </div>
             ) : (
               <>
-                {/* Best recommendation via Gmail option */}
-                <div className="bg-white border border-orange/40 rounded-xl p-4 flex flex-col mb-5 shadow-sm">
-                  <div className="font-mono text-[9px] text-orange tracking-[0.14em] uppercase font-bold mb-1.5 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-orange rounded-full animate-pulse"></span>
-                    {isEn ? "BEST RECOMMENDATION VIA GMAIL" : "REKOMENDASI TERBAIK VIA GMAIL"}
-                  </div>
-                  <p className="text-[12.5px] text-ink-2 leading-relaxed m-0 mb-3 text-left">
-                    {isEn ? "Send the direct interactive dashboard, complete skill gaps, and 90-day roadmap to your inbox instantly." : "Kirim langsung rincian dashboard, skill gaps, & 90-day roadmap lengkap ke email kamu (cepat & aman)."}
-                  </p>
-                  <button 
-                    onClick={() => {
-                      closeSheet();
-                      setShowGmailShare(true);
-                    }}
-                    className="bg-orange text-white border-0 rounded-xl px-4 py-3 text-[13.5px] font-bold tracking-tight text-center hover:bg-orange-2 transition-colors cursor-pointer w-full flex items-center justify-center gap-2 whitespace-nowrap"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    {isEn ? "Send Report via Gmail" : "Kirim Laporan via Gmail"}
-                  </button>
-                </div>
-
-                <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-dark mb-1 text-center font-bold">
-                  {isEn ? "OR SIGN IN TO ACCOUNT" : "ATAU MASUK KE AKUN"}
-                </div>
-
-                <button 
+                <button
                   onClick={handleGoogleSubmit}
                   type="button" 
                   className="bg-ink text-white border-ink rounded-xl px-4 py-3.5 flex items-center gap-3.5 text-[14.5px] w-full text-left transition-colors hover:bg-ink-3 tracking-tight cursor-pointer font-bold"
@@ -372,11 +334,6 @@ export default function SaveSheet() {
         </div>
       </aside>
 
-      <GmailShareModal 
-        isOpen={showGmailShare} 
-        onClose={() => setShowGmailShare(false)} 
-        sessionData={sessionData} 
-      />
     </>
   );
 }
