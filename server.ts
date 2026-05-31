@@ -545,6 +545,11 @@ async function startServer() {
       const isNonsenseInput = (q1: string, q2: string): boolean => {
         const combined = (q1 + " " + q2).trim().toLowerCase();
         if (combined.length < 8) return true;
+        const words = combined.split(/\s+/).filter(Boolean);
+        const meaningfulWords = words.filter(word => word.length >= 4 && !/^(gatau|nggak|tidak|bingung|confused|unknown|nothing|none|idk|dont|don't|soon|cepat)$/.test(word));
+        if (words.length <= 3 || meaningfulWords.length < 2) return true;
+        const vagueOnly = /^(gatau|nggak tahu|tidak tahu|bingung|confused|idk|i don't know|i dont know|nothing|none|belum tahu|kurang tahu)(\s+|$)/;
+        if (vagueOnly.test(combined)) return true;
         if (/^([a-z0-9])\1+$/.test(combined)) return true; // e.g. "aaaaa"
         
         // Match common repeating mashes
