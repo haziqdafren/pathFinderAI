@@ -1,6 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
-import firebaseConfig from '../../../firebase-applet-config.json';
+import fallbackFirebaseConfig from '../../../firebase-applet-config.json';
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || fallbackFirebaseConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || fallbackFirebaseConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || fallbackFirebaseConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || fallbackFirebaseConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || fallbackFirebaseConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || fallbackFirebaseConfig.appId,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || fallbackFirebaseConfig.measurementId,
+};
+
+export const isGmailApiConfigured = Boolean(firebaseConfig.apiKey) && ![
+  firebaseConfig.apiKey,
+  firebaseConfig.authDomain,
+  firebaseConfig.projectId,
+].some((value) => String(value || '').includes('remixed') || String(value || '').includes('YOUR_API_KEY'));
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
@@ -31,10 +47,10 @@ export const initAuth = (onAuthSuccess, onAuthFailure) => {
 export const googleSignInForGmail = async () => {
   try {
     const isPreviewUrl = window.location.hostname.includes('run.app') || window.location.hostname.includes('googleusercontent');
-    if (isPreviewUrl || !firebaseConfig.apiKey || firebaseConfig.apiKey === "AIzaSy_YOUR_API_KEY_HERE...") {
+    if (isPreviewUrl || !isGmailApiConfigured) {
       // Simulate login for preview environments where domain isn't authorized in Firebase
-      cachedAccessToken = "mock_preview_token";
-      return { user: { displayName: "Preview User", email: "preview@example.com" }, accessToken: cachedAccessToken };
+      cachedAccessToken = "compose_fallback_token";
+      return { user: { displayName: "Gmail Compose", email: "compose@gmail.com", isComposeFallback: true }, accessToken: cachedAccessToken };
     }
 
     isSigningIn = true;
@@ -74,10 +90,16 @@ export const sendGmailMessage = async (to, subject, htmlBody) => {
     throw new Error("Gmail API belum terautentikasi. Silakan login ke Google.");
   }
 
-  if (token === "mock_preview_token") {
-    console.log(`[Preview Bypass] Simulated sending email to ${to} with subject: ${subject}`);
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API delay
-    return { id: "mock_email_" + Date.now(), status: "SENT_VIA_BYPASS" };
+  if (token === "compose_fallback_token") {
+    const textBody = htmlBody
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 4500);
+    const composeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(textBody)}`;
+    window.open(composeUrl, '_blank', 'noopener,noreferrer');
+    return { id: "gmail_compose_" + Date.now(), status: "OPENED_GMAIL_COMPOSE" };
   }
 
   // Construct standard RFC 2822 email

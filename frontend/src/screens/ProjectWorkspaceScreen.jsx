@@ -120,6 +120,26 @@ const ALTERNATIVE_PROJECTS = {
       week_2: "Week 2: Ekspor bukti log audit dalam format PDF/HTML lengkap dengan rekomendasi perbaikan."
     }
   ],
+  creative3d: [
+    {
+      name: "Short 3D Animation Portfolio Film",
+      dataset_name: "Blender Scene & Shot Breakdown",
+      duration_weeks: 3,
+      skills_closed: ["Storyboarding", "3D Animation", "Lighting & Rendering"],
+      tech_stack: ["Blender", "DaVinci Resolve", "ArtStation"],
+      week_1: "Week 1: Buat storyboard, asset list, camera plan, dan satu test shot yang polished.",
+      week_2: "Week 2: Animate sequence 20-30 detik, render, lalu publish breakdown reel."
+    },
+    {
+      name: "Motion Graphics Product Teaser",
+      dataset_name: "Brand Animation Brief",
+      duration_weeks: 2,
+      skills_closed: ["Keyframing", "Composition", "Video Editing"],
+      tech_stack: ["Blender", "After Effects", "Premiere/DaVinci"],
+      week_1: "Week 1: Susun moodboard, style frame, dan animatic kasar.",
+      week_2: "Week 2: Finalisasi motion, sound cue, subtitle, dan upload case study."
+    }
+  ],
   web: [
     {
       name: "Customer Interactive Web Dashboard",
@@ -210,6 +230,8 @@ export default function ProjectWorkspaceScreen() {
       category = "backend";
     } else if (roleId.toLowerCase().includes("cyber") || roleId.toLowerCase().includes("network_engineer")) {
       category = "cybersecurity";
+    } else if (roleId.toLowerCase().includes("anim") || roleId.toLowerCase().includes("3d") || roleId.toLowerCase().includes("motion") || roleId.toLowerCase().includes("blender")) {
+      category = "creative3d";
     }
 
     const list = ALTERNATIVE_PROJECTS[category] || ALTERNATIVE_PROJECTS.web;

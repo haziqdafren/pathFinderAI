@@ -47,6 +47,26 @@ const CATEGORIES_JOBS = {
     { title: "User Experience Intern", company: "eFishery", location: "Bandung", match: 79, type: "Internship", source: "google" },
     { title: "Web and App Layout Designer", company: "Niagahoster", location: "Yogyakarta", match: 71, type: "Full-time", source: "jobstreet" }
   ],
+  creative3d: [
+    { title: "Junior 3D Animator", company: "Agate Studio", location: "Bandung", match: 86, type: "Full-time", source: "google" },
+    { title: "Motion Designer Intern", company: "Dentsu Indonesia", location: "Jakarta", match: 80, type: "Internship", source: "linkedin" },
+    { title: "Blender Generalist", company: "Brandoville Studios", location: "Jakarta", match: 83, type: "Full-time", source: "jobstreet" },
+    { title: "3D Artist Junior", company: "Infinite Studios", location: "Batam", match: 81, type: "Full-time", source: "google" },
+    { title: "Video & Motion Graphics Assistant", company: "Ruangguru", location: "Remote", match: 76, type: "Full-time", source: "indeed" },
+    { title: "Game Cinematic Artist Intern", company: "Mojiken Studio", location: "Surabaya", match: 78, type: "Internship", source: "linkedin" },
+    { title: "Visual Effects Assistant", company: "Lumine Studio", location: "Jakarta", match: 74, type: "Full-time", source: "jobstreet" },
+    { title: "Storyboard & Animation Junior", company: "MD Animation", location: "Jakarta", match: 79, type: "Full-time", source: "google" }
+  ],
+  cybersecurity: [
+    { title: "Junior Cybersecurity Analyst", company: "Telkomsigma", location: "Jakarta", match: 86, type: "Full-time", source: "google" },
+    { title: "SOC Analyst Intern", company: "Xynexis International", location: "Jakarta", match: 82, type: "Internship", source: "linkedin" },
+    { title: "Information Security Associate", company: "BCA Digital", location: "Jakarta", match: 84, type: "Full-time", source: "jobstreet" },
+    { title: "Network Security Support", company: "Biznet", location: "Jakarta", match: 79, type: "Full-time", source: "indeed" },
+    { title: "Junior Security Operations Analyst", company: "Bank Mandiri", location: "Jakarta", match: 81, type: "Full-time", source: "google" },
+    { title: "Vulnerability Assessment Intern", company: "ITSEC Asia", location: "Jakarta", match: 80, type: "Internship", source: "linkedin" },
+    { title: "IT Security Staff", company: "Mekari", location: "Jakarta", match: 77, type: "Full-time", source: "jobstreet" },
+    { title: "Cyber Defense Support", company: "GoTo", location: "Remote", match: 83, type: "Full-time", source: "google" }
+  ],
   backend: [
     { title: "Junior Backend Developer", company: "Bibit.id", location: "Jakarta", match: 85, type: "Full-time", source: "google" },
     { title: "Web Developer Intern", company: "Astra Digital", location: "Jakarta", match: 80, type: "Internship", source: "indeed" },
@@ -104,6 +124,10 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
       return 'data';
     } else if (norm.includes('ui') || norm.includes('ux') || norm.includes('design') || norm.includes('desain') || norm.includes('figma')) {
       return 'uiux';
+    } else if (norm.includes('cyber') || norm.includes('security') || norm.includes('soc') || norm.includes('network') || norm.includes('keamanan')) {
+      return 'cybersecurity';
+    } else if (norm.includes('anim') || norm.includes('3d') || norm.includes('motion') || norm.includes('blender') || norm.includes('film') || norm.includes('vfx')) {
+      return 'creative3d';
     } else if (norm.includes('backend') || norm.includes('api') || norm.includes('devops') || norm.includes('database')) {
       return 'backend';
     }
@@ -219,7 +243,7 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
                 <p className="text-[12.5px] text-muted-dark mt-1 mb-0 leading-relaxed">
                   {isLive 
                     ? "Gabungan dari 5+ platform kerja utama Indonesia, terfilter real-time sesuai preferensimu."
-                    : "Data contoh fallback sebagai representasi dari platform kerja utama Indonesia, disesuaikan dengan preferensimu."}
+                    : "Contoh pencarian lowongan dan shortcut platform kerja, disesuaikan dengan preferensimu."}
                 </p>
               </div>
               <button 
@@ -381,7 +405,7 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
                         referrerPolicy="no-referrer"
                         className="bg-orange text-white hover:bg-orange-2 font-sans text-[12.5px] font-medium py-1.5 px-3 rounded-[8px] inline-flex items-center justify-center gap-1.5 no-underline transition-colors shadow-xs"
                       >
-                        <span>Lamar Sekarang</span>
+                        <span>Buka Sumber</span>
                         <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                           <polyline points="15 3 21 3 21 9"></polyline>

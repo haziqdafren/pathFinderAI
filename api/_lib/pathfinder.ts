@@ -141,7 +141,7 @@ async function generateJsonWithGemini(prompt: string, useSearch = false) {
     "Gemini generation",
   );
 
-  return parseJsonText(response.text || "{}");
+  return { ...parseJsonText(response.text || "{}"), __provider: useSearch ? "gemini_search" : "gemini" };
 }
 
 async function generateJsonWithOpenRouter(prompt: string) {
@@ -169,7 +169,7 @@ async function generateJsonWithOpenRouter(prompt: string) {
   const body = await response.text();
   if (!response.ok) throw new Error(`OpenRouter ${response.status}: ${body.slice(0, 500)}`);
   const data = JSON.parse(body);
-  return parseJsonText(data.choices?.[0]?.message?.content || "{}");
+  return { ...parseJsonText(data.choices?.[0]?.message?.content || "{}"), __provider: "openrouter" };
 }
 
 async function generateJsonWithGroq(prompt: string) {
@@ -195,7 +195,7 @@ async function generateJsonWithGroq(prompt: string) {
   const body = await response.text();
   if (!response.ok) throw new Error(`Groq ${response.status}: ${body.slice(0, 500)}`);
   const data = JSON.parse(body);
-  return parseJsonText(data.choices?.[0]?.message?.content || "{}");
+  return { ...parseJsonText(data.choices?.[0]?.message?.content || "{}"), __provider: "groq" };
 }
 
 export async function generateJson(prompt: string, useSearch = false) {
@@ -244,13 +244,55 @@ export function fallbackAnalysis(answers: string[], sessionId: string, lang = "i
   const userName = answers[0]?.trim() || (isEn ? "Friend" : "Kamu");
   const joined = `${answers[1] || ""} ${answers[2] || ""}`.toLowerCase();
   const location = answers[3]?.trim() || "Jakarta";
-  const isBackend = /\b(rest\s+api|api|backend|database|basis\s+data|server|express|node(?:\.js)?|postgres(?:ql)?|jwt|middleware|endpoint)\b/.test(joined);
-  const isUi = /ui|ux|figma|design|desain|wireframe/.test(joined);
-  const isData = !isBackend && /data|sql|excel|spreadsheet|dashboard|analyst|python/.test(joined);
+  const isCyber = /\b(cyber|security|keamanan|siber|network|jaringan|packet|traffic|intrusion|threat|soc|siem|firewall|port\s*scan|portscan|detecting system|deteksi|vulnerability|owasp|incident|linux)\b/.test(joined);
+  const isCreative = /\b(animasi|animation|animator|blender|3d|modeling|modelling|render|rendering|film|video|motion|storyboard|vfx|visual effect|cinematic|maya|after effects)\b/.test(joined);
+  const isBackend = !isCyber && /\b(rest\s+api|api|backend|database|basis\s+data|server|express|node(?:\.js)?|postgres(?:ql)?|jwt|middleware|endpoint)\b/.test(joined);
+  const isUi = !isCyber && !isCreative && /ui|ux|figma|design|desain|wireframe/.test(joined);
+  const isData = !isCyber && !isCreative && !isBackend && /data|sql|excel|spreadsheet|dashboard|analyst|python/.test(joined);
 
-  const role = isBackend ? "Junior Backend Engineer" : isData ? "Junior Data Analyst" : isUi ? "Junior UI/UX Designer" : "Junior Web Developer";
-  const skill = isBackend ? "API Authentication & Testing" : isData ? "Python (pandas)" : isUi ? "Design System Setup" : "React/JavaScript ES6";
-  const project = isBackend
+  const role = isCyber
+    ? "Junior Cybersecurity Analyst"
+    : isCreative
+    ? "Junior 3D Animator"
+    : isBackend
+    ? "Junior Backend Engineer"
+    : isData
+    ? "Junior Data Analyst"
+    : isUi
+    ? "Junior UI/UX Designer"
+    : "Junior Web Developer";
+  const skill = isCyber
+    ? "Network Security & Threat Monitoring"
+    : isCreative
+    ? "Blender Animation Pipeline"
+    : isBackend
+    ? "API Authentication & Testing"
+    : isData
+    ? "Python (pandas)"
+    : isUi
+    ? "Design System Setup"
+    : "React/JavaScript ES6";
+  const project = isCyber
+    ? {
+        name: "Network Traffic Detection Lab",
+        dataset_name: "PCAP Sample Traffic Dataset",
+        duration_weeks: 3,
+        skills_closed: ["Packet Analysis", "Threat Detection", "Security Reporting"],
+        tech_stack: ["Python", "Wireshark", "Suricata"],
+        week_1: "Week 1: Capture safe sample traffic and label normal vs suspicious patterns.",
+        week_2: "Week 2: Build detection rules, export findings, and write a concise incident report.",
+      }
+    : isCreative
+    ? {
+        name: "Short 3D Animation Portfolio Film",
+        dataset_name: "Blender Scene & Shot Breakdown",
+        duration_weeks: 3,
+        skills_closed: ["Storyboarding", "3D Animation", "Lighting & Rendering"],
+        tech_stack: ["Blender", "DaVinci Resolve", "Behance/ArtStation"],
+        week_1: "Week 1: Create storyboard, asset list, camera plan, and one polished test shot.",
+        week_2: "Week 2: Animate a 20-30 second sequence, render it, and publish a breakdown reel.",
+      }
+    : isBackend
     ? {
         name: "Secure E-Commerce REST API Engine",
         dataset_name: "Dynamic API Middleware",
@@ -286,7 +328,7 @@ export function fallbackAnalysis(answers: string[], sessionId: string, lang = "i
     readiness_score: 75,
     top_roles: [
       { rank: 1, role_name: role, role_id: role.toLowerCase().replace(/[^a-z0-9]+/g, "_"), fit_score: 82, skills_shown: project.skills_closed.slice(0, 3), job_count: 8 },
-      { rank: 2, role_name: isBackend ? "Web Developer (Backend Focus)" : isData ? "BI Analyst Intern" : "Frontend Engineer Intern", role_id: "secondary_role", fit_score: 74, skills_shown: ["Portfolio", "Communication"], job_count: 6 },
+      { rank: 2, role_name: isCyber ? "SOC Analyst Intern" : isCreative ? "Motion Designer Intern" : isBackend ? "Web Developer (Backend Focus)" : isData ? "BI Analyst Intern" : isUi ? "Product Design Intern" : "Frontend Engineer Intern", role_id: "secondary_role", fit_score: 74, skills_shown: ["Portfolio", "Communication"], job_count: 6 },
     ],
     signal_chips: isEn ? ["practical builder", "portfolio ready", "needs sharper proof"] : ["builder praktis", "siap portfolio", "butuh bukti lebih tajam"],
     skill_gaps: [

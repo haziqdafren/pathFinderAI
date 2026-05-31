@@ -24,6 +24,13 @@ export default async function handler(req: any, res: any) {
     const prompt = `
 You are PathFinder AI, a career advisor for Indonesian IT fresh graduates.
 Analyze these 5 answers and return JSON only.
+Prioritize semantic fit over generic software roles:
+- Blender, animation, film, 3D, rendering, storyboard, or VFX => creative digital roles such as Junior 3D Animator, Motion Designer, 3D Artist.
+- Network detection, traffic monitoring, packet analysis, cyber, security, SIEM, SOC, vulnerability, or incident response => cybersecurity roles.
+- API/database/server/auth/backend => backend roles.
+- Dashboard/SQL/spreadsheet/data analysis => data roles.
+Do not force every profile into web developer or backend engineer.
+For live_jobs, use real companies/postings only when the provider has search grounding. If you are not sure, return credible role search examples and avoid claiming they are open postings.
 
 Answers:
 Name: ${body.answers[0]}
@@ -56,6 +63,8 @@ Return this exact JSON shape:
       });
       result = await generateJson(prompt, false);
     }
+    const isGroundedSearch = result.__provider === "gemini_search";
+    const hasAiJobs = Array.isArray(result.live_jobs) && result.live_jobs.length > 0;
     const responseBody = {
       session_id: body.session_id,
       user_name: result.user_name || body.answers[0] || "Kamu",
@@ -68,10 +77,13 @@ Return this exact JSON shape:
       project: result.project_recommendation || result.project || null,
       visual_roadmap: result.visual_roadmap || null,
       jobs_analyzed: result.jobs_analyzed || 20,
-      jobs_source: Array.isArray(result.live_jobs) && result.live_jobs.length > 0 ? "AI Google Search" : "Cached/Fallback Data",
-      is_live: Array.isArray(result.live_jobs) && result.live_jobs.length > 0,
+      jobs_source: hasAiJobs ? (isGroundedSearch ? "AI Google Search" : "AI Curated Listings") : "Cached/Fallback Data",
+      is_live: hasAiJobs && isGroundedSearch,
       fetched_at: new Date().toISOString(),
-      live_jobs: result.live_jobs || [],
+      live_jobs: (result.live_jobs || []).map((job: any) => ({
+        ...job,
+        is_fallback: !isGroundedSearch,
+      })),
     };
     setCachedAnalysis(cacheKey, responseBody);
     res.status(200).json(responseBody);
