@@ -1,5 +1,58 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// Curated real Indonesian companies per role category — always reliable
+const CURATED_JOBS = {
+  data: [
+    { title: "Junior Data Analyst", company: "Tokopedia", location: "Jakarta", match: 88, type: "Full-time", source: "jobstreet" },
+    { title: "BI Analyst Intern", company: "Gojek", location: "Jakarta", match: 84, type: "Internship", source: "linkedin" },
+    { title: "Data Operations Associate", company: "Traveloka", location: "Jakarta", match: 81, type: "Full-time", source: "indeed" },
+  ],
+  uiux: [
+    { title: "Junior UI/UX Designer", company: "Gojek", location: "Jakarta", match: 87, type: "Full-time", source: "jobstreet" },
+    { title: "Product Designer Intern", company: "Tokopedia", location: "Jakarta", match: 83, type: "Internship", source: "linkedin" },
+    { title: "UI Designer", company: "Traveloka", location: "Jakarta", match: 80, type: "Full-time", source: "glints" },
+  ],
+  cybersecurity: [
+    { title: "Junior Cybersecurity Analyst", company: "Telkomsigma", location: "Jakarta", match: 86, type: "Full-time", source: "jobstreet" },
+    { title: "SOC Analyst Intern", company: "Bank Mandiri", location: "Jakarta", match: 82, type: "Internship", source: "linkedin" },
+    { title: "IT Security Staff", company: "BCA Digital", location: "Jakarta", match: 79, type: "Full-time", source: "indeed" },
+  ],
+  creative3d: [
+    { title: "Junior 3D Animator", company: "Agate Studio", location: "Bandung", match: 86, type: "Full-time", source: "glints" },
+    { title: "Motion Designer Intern", company: "Ruangguru", location: "Jakarta", match: 80, type: "Internship", source: "linkedin" },
+    { title: "Blender Generalist", company: "Brandoville Studios", location: "Jakarta", match: 83, type: "Full-time", source: "jobstreet" },
+  ],
+  backend: [
+    { title: "Junior Backend Engineer", company: "Midtrans", location: "Jakarta", match: 86, type: "Full-time", source: "jobstreet" },
+    { title: "Backend Developer Intern", company: "Dana Indonesia", location: "Jakarta", match: 81, type: "Internship", source: "linkedin" },
+    { title: "API Developer Junior", company: "Mekari", location: "Jakarta", match: 84, type: "Full-time", source: "glints" },
+  ],
+  web: [
+    { title: "Junior Frontend Engineer", company: "Tokopedia", location: "Jakarta", match: 85, type: "Full-time", source: "jobstreet" },
+    { title: "Frontend Developer Intern", company: "Traveloka", location: "Jakarta", match: 81, type: "Internship", source: "linkedin" },
+    { title: "Junior React Developer", company: "Mekari", location: "Jakarta", match: 83, type: "Full-time", source: "glints" },
+  ],
+};
+
+function getRoleCategory(roleName = '') {
+  const n = roleName.toLowerCase();
+  if (/cyber|security|soc|siber|network|threat|incident/.test(n)) return 'cybersecurity';
+  if (/anim|3d|motion|blender|film|vfx/.test(n)) return 'creative3d';
+  if (/data|analyst|bi\b/.test(n)) return 'data';
+  if (/ui|ux|design|figma/.test(n)) return 'uiux';
+  if (/backend|api|devops|node|express/.test(n)) return 'backend';
+  return 'web';
+}
+
+function getPlatformUrl(job) {
+  const role = encodeURIComponent(job.title);
+  const loc = encodeURIComponent(job.location && job.location !== 'Remote' ? job.location : 'Indonesia');
+  if (job.source === 'linkedin') return `https://www.linkedin.com/jobs/search/?keywords=${role}&location=${loc}`;
+  if (job.source === 'indeed') return `https://id.indeed.com/jobs?q=${role}&l=${loc}`;
+  if (job.source === 'glints') return `https://glints.com/id/opportunities/jobs/explore?keyword=${role}&country=ID&locationName=${loc}`;
+  return `https://www.jobstreet.co.id/jobs?q=${role}&l=${loc}`;
+}
 
 const PathyChatDrawer = lazy(() => import('../components/PathyChatDrawer'));
 const JobsListDrawer = lazy(() => import('../components/JobsListDrawer'));
@@ -905,22 +958,13 @@ export default function ResultsScreen() {
               })()}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                {(data.live_jobs || []).map((job, i) => {
-                  const platforms = ['jobstreet', 'linkedin', 'indeed', 'glints'];
-                  const platform = platforms[i % platforms.length];
-                  const role = encodeURIComponent(job.title);
-                  const loc = encodeURIComponent(job.location && job.location !== 'Remote' ? job.location : 'Indonesia');
-                  const searchUrl = platform === 'jobstreet'
-                    ? `https://www.jobstreet.co.id/jobs?q=${role}&l=${loc}`
-                    : platform === 'linkedin'
-                    ? `https://www.linkedin.com/jobs/search/?keywords=${role}&location=${loc}`
-                    : platform === 'glints'
-                    ? `https://glints.com/id/opportunities/jobs/explore?keyword=${role}&country=ID&locationName=${loc}`
-                    : `https://id.indeed.com/jobs?q=${role}&l=${loc}`;
-                  
+                {CURATED_JOBS[getRoleCategory(topRoleName)].map((job, i) => {
+                  const searchUrl = getPlatformUrl(job);
+                  const sourceName = job.source === 'linkedin' ? 'LinkedIn' : job.source === 'indeed' ? 'Indeed' : job.source === 'glints' ? 'Glints' : 'Jobstreet';
+                  const sourceStyle = job.source === 'linkedin' ? 'text-sky-700 bg-sky-50 border border-sky-100' : job.source === 'indeed' ? 'text-indigo-700 bg-indigo-50 border border-indigo-100' : job.source === 'glints' ? 'text-pink-700 bg-pink-50 border border-pink-100' : 'text-emerald-700 bg-emerald-50 border border-emerald-100';
                   return (
-                    <a 
-                      key={i} 
+                    <a
+                      key={i}
                       href={searchUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -934,8 +978,8 @@ export default function ResultsScreen() {
                           <span className="bg-orange/10 text-orange-2 border border-orange/20 px-2 py-0.5 rounded-[6px] font-mono text-[9px] tracking-[0.06em] uppercase font-semibold">
                             {job.match}% match
                           </span>
-                          <span className={`text-[8.5px] font-mono font-medium px-1.5 py-0.5 rounded-[4px] shrink-0 ${platform === 'jobstreet' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : platform === 'linkedin' ? 'text-sky-700 bg-sky-50 border border-sky-100' : platform === 'glints' ? 'text-pink-700 bg-pink-50 border border-pink-100' : 'text-indigo-700 bg-indigo-50 border border-indigo-100'}`}>
-                            {platform === 'jobstreet' ? 'Jobstreet' : platform === 'linkedin' ? 'LinkedIn' : platform === 'glints' ? 'Glints' : 'Indeed'}
+                          <span className={`text-[8.5px] font-mono font-medium px-1.5 py-0.5 rounded-[4px] shrink-0 ${sourceStyle}`}>
+                            {sourceName}
                           </span>
                         </div>
                       </div>
@@ -946,6 +990,7 @@ export default function ResultsScreen() {
                       <div className="flex items-center gap-2 font-mono text-[10.5px] text-muted-dark uppercase tracking-[0.04em] pt-4 border-t border-dashed border-border">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                         {job.location} <span className="text-border mx-0.5">•</span> {job.type}
+                        <span className="ml-auto text-orange text-[9px] font-medium normal-case">{isEn ? 'Search live →' : 'Cari live →'}</span>
                       </div>
                     </a>
                   );
