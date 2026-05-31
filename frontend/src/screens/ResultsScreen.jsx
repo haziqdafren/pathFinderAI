@@ -906,10 +906,17 @@ export default function ResultsScreen() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                 {(data.live_jobs || []).map((job, i) => {
-                  const isGoogleSource = i % 2 === 0;
-                  const searchUrl = isGoogleSource
-                    ? `https://www.google.com/search?q=${encodeURIComponent(job.title + " " + (job.company || "") + " " + (job.location || "") + " lowongan kerja")}`
-                    : `https://id.indeed.com/jobs?q=${encodeURIComponent(job.title)}&l=${encodeURIComponent(job.location)}`;
+                  const platforms = ['jobstreet', 'linkedin', 'indeed', 'glints'];
+                  const platform = platforms[i % platforms.length];
+                  const role = encodeURIComponent(job.title);
+                  const loc = encodeURIComponent(job.location && job.location !== 'Remote' ? job.location : 'Indonesia');
+                  const searchUrl = platform === 'jobstreet'
+                    ? `https://www.jobstreet.co.id/jobs?q=${role}&l=${loc}`
+                    : platform === 'linkedin'
+                    ? `https://www.linkedin.com/jobs/search/?keywords=${role}&location=${loc}`
+                    : platform === 'glints'
+                    ? `https://glints.com/id/opportunities/jobs/explore?keyword=${role}&country=ID&locationName=${loc}`
+                    : `https://id.indeed.com/jobs?q=${role}&l=${loc}`;
                   
                   return (
                     <a 
@@ -927,8 +934,8 @@ export default function ResultsScreen() {
                           <span className="bg-orange/10 text-orange-2 border border-orange/20 px-2 py-0.5 rounded-[6px] font-mono text-[9px] tracking-[0.06em] uppercase font-semibold">
                             {job.match}% match
                           </span>
-                          <span className={`text-[8.5px] font-mono font-medium px-1.5 py-0.5 rounded-[4px] shrink-0 ${job.is_fallback ? 'text-slate-600 bg-slate-100 border border-slate-200' : (isGoogleSource ? 'text-blue-600 bg-blue-50 border border-blue-100' : 'text-indigo-600 bg-indigo-50 border border-indigo-100')}`}>
-                            {job.is_fallback ? (isEn ? 'Sample' : 'Fallback') : (isGoogleSource ? 'Google Search' : 'Indeed ID')}
+                          <span className={`text-[8.5px] font-mono font-medium px-1.5 py-0.5 rounded-[4px] shrink-0 ${platform === 'jobstreet' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : platform === 'linkedin' ? 'text-sky-700 bg-sky-50 border border-sky-100' : platform === 'glints' ? 'text-pink-700 bg-pink-50 border border-pink-100' : 'text-indigo-700 bg-indigo-50 border border-indigo-100'}`}>
+                            {platform === 'jobstreet' ? 'Jobstreet' : platform === 'linkedin' ? 'LinkedIn' : platform === 'glints' ? 'Glints' : 'Indeed'}
                           </span>
                         </div>
                       </div>

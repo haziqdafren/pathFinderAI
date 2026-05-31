@@ -4,112 +4,112 @@ import { motion, AnimatePresence } from 'motion/react';
 // Pre-defined dataset of 20 rich, realistic Indonesian jobs per category
 const CATEGORIES_JOBS = {
   data: [
-    { title: "Junior Data Analyst", company: "Bukalapak", location: "Jakarta", match: 86, type: "Full-time", source: "google" },
+    { title: "Junior Data Analyst", company: "Bukalapak", location: "Jakarta", match: 86, type: "Full-time", source: "glints" },
     { title: "BI Analyst Intern", company: "Tokopedia", location: "Jakarta", match: 82, type: "Internship", source: "indeed" },
     { title: "Data Operations Specialist", company: "Sayurbox", location: "Bandung", match: 78, type: "Full-time", source: "jobstreet" },
     { title: "Reporting Analyst", company: "Gojek Tokopedia (GoTo)", location: "Jakarta", match: 88, type: "Full-time", source: "linkedin" },
-    { title: "Junior Business Intelligence Developer", company: "Traveloka", location: "Jakarta", match: 84, type: "Full-time", source: "google" },
+    { title: "Junior Business Intelligence Developer", company: "Traveloka", location: "Jakarta", match: 84, type: "Full-time", source: "glints" },
     { title: "Data Specialist Intern", company: "Bibit.id", location: "Remote", match: 80, type: "Internship", source: "indeed" },
     { title: "Junior Reporting Staff", company: "Stockbit", location: "Jakarta", match: 76, type: "Full-time", source: "jobstreet" },
-    { title: "Database & Ops Assistant", company: "Kredivo", location: "Surabaya", match: 72, type: "Full-time", source: "google" },
+    { title: "Database & Ops Assistant", company: "Kredivo", location: "Surabaya", match: 72, type: "Full-time", source: "glints" },
     { title: "Operational & Data Analyst", company: "Astra International", location: "Jakarta", match: 85, type: "Full-time", source: "linkedin" },
     { title: "Junior Marketing Analyst", company: "Halodoc", location: "Jakarta", match: 81, type: "Full-time", source: "indeed" },
-    { title: "E-Commerce Analyst Assistant", company: "Shopee Indonesia", location: "Jakarta", match: 89, type: "Full-time", source: "google" },
+    { title: "E-Commerce Analyst Assistant", company: "Shopee Indonesia", location: "Jakarta", match: 89, type: "Full-time", source: "glints" },
     { title: "CRM Analyst Intern", company: "eFishery", location: "Bandung", match: 79, type: "Internship", source: "jobstreet" },
     { title: "Junior Systems Analyst", company: "BCA (Bank Central Asia)", location: "Tangerang", match: 83, type: "Full-time", source: "linkedin" },
     { title: "Data Operations Associate", company: "Lazada Indonesia", location: "Jakarta", match: 75, type: "Full-time", source: "indeed" },
-    { title: "Product Analyst Intern", company: "Alami Sharia", location: "Jakarta", match: 77, type: "Internship", source: "google" },
+    { title: "Product Analyst Intern", company: "Alami Sharia", location: "Jakarta", match: 77, type: "Internship", source: "glints" },
     { title: "Sales Performance Analyst", company: "Kalbe Farma", location: "Bekasi", match: 73, type: "Full-time", source: "jobstreet" },
     { title: "Junior BI Analyst", company: "Mekari", location: "Jakarta", match: 82, type: "Full-time", source: "indeed" },
-    { title: "Data Quality Specialist", company: "Ruangguru", location: "Jakarta", match: 74, type: "Full-time", source: "google" },
+    { title: "Data Quality Specialist", company: "Ruangguru", location: "Jakarta", match: 74, type: "Full-time", source: "glints" },
     { title: "Revenue Operations Analyst", company: "Flip.id", location: "Depok", match: 81, type: "Full-time", source: "linkedin" },
     { title: "Supply Chain Data Assistant", company: "Indofood", location: "Surabaya", match: 70, type: "Full-time", source: "jobstreet" }
   ],
   uiux: [
-    { title: "Junior UI/UX Designer", company: "BFI Finance", location: "Jakarta", match: 88, type: "Full-time", source: "google" },
+    { title: "Junior UI/UX Designer", company: "BFI Finance", location: "Jakarta", match: 88, type: "Full-time", source: "glints" },
     { title: "UI Designer Intern", company: "Tiket.com", location: "Jakarta", match: 81, type: "Internship", source: "indeed" },
     { title: "Product Designer", company: "Mekari", location: "Jakarta", match: 85, type: "Full-time", source: "jobstreet" },
     { title: "UX Researcher Intern", company: "Kitabisa.com", location: "Remote", match: 83, type: "Internship", source: "linkedin" },
-    { title: "Junior Interaction Designer", company: "Gojek", location: "Jakarta", match: 87, type: "Full-time", source: "google" },
+    { title: "Junior Interaction Designer", company: "Gojek", location: "Jakarta", match: 87, type: "Full-time", source: "glints" },
     { title: "Web Designer & UI Specialist", company: "IDN Media", location: "Surabaya", match: 79, type: "Full-time", source: "indeed" },
     { title: "Junior Visual Designer", company: "Dentsu Indonesia", location: "Jakarta", match: 76, type: "Full-time", source: "jobstreet" },
     { title: "Associate Product Designer", company: "Stockbit", location: "Jakarta", match: 84, type: "Full-time", source: "linkedin" },
-    { title: "Junior Figma Designer", company: "Xendit", location: "Jakarta", match: 86, type: "Full-time", source: "google" },
+    { title: "Junior Figma Designer", company: "Xendit", location: "Jakarta", match: 86, type: "Full-time", source: "glints" },
     { title: "UI/UX Design Associate", company: "Astra Digital", location: "Jakarta", match: 80, type: "Full-time", source: "indeed" },
     { title: "UX Designer Intern", company: "Amartha", location: "Remote", match: 78, type: "Internship", source: "jobstreet" },
-    { title: "Mobile UI Designer", company: "Ruangguru", location: "Jakarta", match: 82, type: "Full-time", source: "google" },
+    { title: "Mobile UI Designer", company: "Ruangguru", location: "Jakarta", match: 82, type: "Full-time", source: "glints" },
     { title: "Junior Product Researcher", company: "Flip.id", location: "Depok", match: 75, type: "Full-time", source: "linkedin" },
     { title: "Service Design Intern", company: "Telkom Indonesia", location: "Bandung", match: 74, type: "Internship", source: "indeed" },
-    { title: "Usability Analyst", company: "LinkAja", location: "Jakarta", match: 81, type: "Full-time", source: "google" },
+    { title: "Usability Analyst", company: "LinkAja", location: "Jakarta", match: 81, type: "Full-time", source: "glints" },
     { title: "Figma Component & System Designer", company: "Mamikos", location: "Yogyakarta", match: 77, type: "Full-time", source: "jobstreet" },
     { title: "Graphic Designer & UI Assistant", company: "Blibli", location: "Jakarta", match: 73, type: "Full-time", source: "linkedin" },
     { title: "Junior UI/UX Generalist", company: "Sirclo", location: "Tangerang", match: 83, type: "Full-time", source: "indeed" },
-    { title: "User Experience Intern", company: "eFishery", location: "Bandung", match: 79, type: "Internship", source: "google" },
+    { title: "User Experience Intern", company: "eFishery", location: "Bandung", match: 79, type: "Internship", source: "glints" },
     { title: "Web and App Layout Designer", company: "Niagahoster", location: "Yogyakarta", match: 71, type: "Full-time", source: "jobstreet" }
   ],
   creative3d: [
-    { title: "Junior 3D Animator", company: "Agate Studio", location: "Bandung", match: 86, type: "Full-time", source: "google" },
+    { title: "Junior 3D Animator", company: "Agate Studio", location: "Bandung", match: 86, type: "Full-time", source: "glints" },
     { title: "Motion Designer Intern", company: "Dentsu Indonesia", location: "Jakarta", match: 80, type: "Internship", source: "linkedin" },
     { title: "Blender Generalist", company: "Brandoville Studios", location: "Jakarta", match: 83, type: "Full-time", source: "jobstreet" },
-    { title: "3D Artist Junior", company: "Infinite Studios", location: "Batam", match: 81, type: "Full-time", source: "google" },
+    { title: "3D Artist Junior", company: "Infinite Studios", location: "Batam", match: 81, type: "Full-time", source: "glints" },
     { title: "Video & Motion Graphics Assistant", company: "Ruangguru", location: "Remote", match: 76, type: "Full-time", source: "indeed" },
     { title: "Game Cinematic Artist Intern", company: "Mojiken Studio", location: "Surabaya", match: 78, type: "Internship", source: "linkedin" },
     { title: "Visual Effects Assistant", company: "Lumine Studio", location: "Jakarta", match: 74, type: "Full-time", source: "jobstreet" },
-    { title: "Storyboard & Animation Junior", company: "MD Animation", location: "Jakarta", match: 79, type: "Full-time", source: "google" }
+    { title: "Storyboard & Animation Junior", company: "MD Animation", location: "Jakarta", match: 79, type: "Full-time", source: "glints" }
   ],
   cybersecurity: [
-    { title: "Junior Cybersecurity Analyst", company: "Telkomsigma", location: "Jakarta", match: 86, type: "Full-time", source: "google" },
+    { title: "Junior Cybersecurity Analyst", company: "Telkomsigma", location: "Jakarta", match: 86, type: "Full-time", source: "glints" },
     { title: "SOC Analyst Intern", company: "Xynexis International", location: "Jakarta", match: 82, type: "Internship", source: "linkedin" },
     { title: "Information Security Associate", company: "BCA Digital", location: "Jakarta", match: 84, type: "Full-time", source: "jobstreet" },
     { title: "Network Security Support", company: "Biznet", location: "Jakarta", match: 79, type: "Full-time", source: "indeed" },
-    { title: "Junior Security Operations Analyst", company: "Bank Mandiri", location: "Jakarta", match: 81, type: "Full-time", source: "google" },
+    { title: "Junior Security Operations Analyst", company: "Bank Mandiri", location: "Jakarta", match: 81, type: "Full-time", source: "glints" },
     { title: "Vulnerability Assessment Intern", company: "ITSEC Asia", location: "Jakarta", match: 80, type: "Internship", source: "linkedin" },
     { title: "IT Security Staff", company: "Mekari", location: "Jakarta", match: 77, type: "Full-time", source: "jobstreet" },
-    { title: "Cyber Defense Support", company: "GoTo", location: "Remote", match: 83, type: "Full-time", source: "google" }
+    { title: "Cyber Defense Support", company: "GoTo", location: "Remote", match: 83, type: "Full-time", source: "glints" }
   ],
   backend: [
-    { title: "Junior Backend Developer", company: "Bibit.id", location: "Jakarta", match: 85, type: "Full-time", source: "google" },
+    { title: "Junior Backend Developer", company: "Bibit.id", location: "Jakarta", match: 85, type: "Full-time", source: "glints" },
     { title: "Web Developer Intern", company: "Astra Digital", location: "Jakarta", match: 80, type: "Internship", source: "indeed" },
     { title: "Backend Engineer (Express/Node)", company: "Kredivo", location: "Bandung", match: 84, type: "Full-time", source: "jobstreet" },
     { title: "API Integration Specialist", company: "Finantier", location: "Remote", match: 87, type: "Full-time", source: "linkedin" },
-    { title: "Junior Node.js Developer", company: "Stockbit", location: "Jakarta", match: 83, type: "Full-time", source: "google" },
+    { title: "Junior Node.js Developer", company: "Stockbit", location: "Jakarta", match: 83, type: "Full-time", source: "glints" },
     { title: "Junior Database Administrator", company: "BCA (Bank Central Asia)", location: "Tangerang", match: 82, type: "Full-time", source: "indeed" },
     { title: "Backend Developer Intern", company: "Dana Indonesia", location: "Jakarta", match: 79, type: "Internship", source: "jobstreet" },
     { title: "Junior Software Engineer", company: "Midtrans", location: "Jakarta", match: 86, type: "Full-time", source: "linkedin" },
-    { title: "REST API Developer Junior", company: "Mekari", location: "Jakarta", match: 81, type: "Full-time", source: "google" },
+    { title: "REST API Developer Junior", company: "Mekari", location: "Jakarta", match: 81, type: "Full-time", source: "glints" },
     { title: "Junior DevOps/Sysadmin", company: "Biznet", location: "Jakarta", match: 75, type: "Full-time", source: "indeed" },
     { title: "Backend Associate Engineer", company: "LinkAja", location: "Jakarta", match: 83, type: "Full-time", source: "jobstreet" },
-    { title: "Junior Cloud Engineer", company: "Telkom Sigma", location: "Tangerang", match: 73, type: "Full-time", source: "google" },
+    { title: "Junior Cloud Engineer", company: "Telkom Sigma", location: "Tangerang", match: 73, type: "Full-time", source: "glints" },
     { title: "Database Operations Junior", company: "Blibli", location: "Jakarta", match: 77, type: "Full-time", source: "linkedin" },
     { title: "QA Automation Associate", company: "Ruangguru", location: "Jakarta", match: 78, type: "Full-time", source: "indeed" },
-    { title: "Backend Support Engineer", company: "Sayurbox", location: "Jakarta", match: 72, type: "Full-time", source: "google" },
+    { title: "Backend Support Engineer", company: "Sayurbox", location: "Jakarta", match: 72, type: "Full-time", source: "glints" },
     { title: "Data Engineer Junior", company: "Alami Sharia", location: "Jakarta", match: 80, type: "Full-time", source: "jobstreet" },
     { title: "Node.js API Builder", company: "Pluang", location: "Jakarta", match: 81, type: "Full-time", source: "indeed" },
     { title: "Software Engineer (Backend API)", company: "Ajaib", location: "Jakarta", match: 84, type: "Full-time", source: "linkedin" },
-    { title: "Backend Systems Intern", company: "eFishery", location: "Bandung", match: 76, type: "Internship", source: "google" },
+    { title: "Backend Systems Intern", company: "eFishery", location: "Bandung", match: 76, type: "Internship", source: "glints" },
     { title: "Backend Web Assistant", company: "Niagahoster", location: "Yogyakarta", match: 69, type: "Full-time", source: "jobstreet" }
   ],
   web: [
-    { title: "Junior Web Developer", company: "Traveloka", location: "Jakarta", match: 87, type: "Full-time", source: "google" },
+    { title: "Junior Web Developer", company: "Traveloka", location: "Jakarta", match: 87, type: "Full-time", source: "glints" },
     { title: "Frontend Developer Intern", company: "eFishery", location: "Bandung", match: 82, type: "Internship", source: "indeed" },
     { title: "Web Generalist Developer", company: "Halodoc", location: "Jakarta", match: 83, type: "Full-time", source: "jobstreet" },
     { title: "WordPress & CMS Developer", company: "Niagahoster", location: "Yogyakarta", match: 79, type: "Full-time", source: "linkedin" },
-    { title: "Junior React Developer", company: "Mekari", location: "Jakarta", match: 85, type: "Full-time", source: "google" },
+    { title: "Junior React Developer", company: "Mekari", location: "Jakarta", match: 85, type: "Full-time", source: "glints" },
     { title: "Web Layout Assistant", company: "IDN Media", location: "Surabaya", match: 78, type: "Full-time", source: "indeed" },
     { title: "SaaS Frontend Intern", company: "Xendit", location: "Tangerang", match: 81, type: "Internship", source: "jobstreet" },
     { title: "Junior Frontend Engineer", company: "Bibit.id", location: "Jakarta", match: 86, type: "Full-time", source: "linkedin" },
-    { title: "HTML/CSS Designer", company: "Sirclo", location: "Jakarta", match: 77, type: "Full-time", source: "google" },
+    { title: "HTML/CSS Designer", company: "Sirclo", location: "Jakarta", match: 77, type: "Full-time", source: "glints" },
     { title: "Junior Fullstack Developer", company: "Dana Indonesia", location: "Jakarta", match: 84, type: "Full-time", source: "indeed" },
     { title: "Interactive Web Specialist", company: "Ruangguru", location: "Jakarta", match: 80, type: "Full-time", source: "jobstreet" },
-    { title: "No-code Web Creator", company: "Kargon", location: "Remote", match: 72, type: "Full-time", source: "google" },
+    { title: "No-code Web Creator", company: "Kargon", location: "Remote", match: 72, type: "Full-time", source: "glints" },
     { title: "Junior Web Application Staff", company: "Amartha", location: "Jakarta", match: 78, type: "Full-time", source: "linkedin" },
     { title: "UI Developer Intern", company: "Blibli", location: "Jakarta", match: 74, type: "Internship", source: "indeed" },
     { title: "Web Administrator & Support", company: "Astra International", location: "Bekasi", match: 71, type: "Full-time", source: "jobstreet" },
-    { title: "React Web Developer (entry)", company: "Stockbit", location: "Jakarta", match: 83, type: "Full-time", source: "google" },
+    { title: "React Web Developer (entry)", company: "Stockbit", location: "Jakarta", match: 83, type: "Full-time", source: "glints" },
     { title: "Frontend Assistant", company: "Hukumonline", location: "Jakarta", match: 75, type: "Full-time", source: "indeed" },
     { title: "E-Commerce Web Assistant", company: "Map Aktif", location: "Jakarta", match: 73, type: "Full-time", source: "jobstreet" },
     { title: "Web Developer (React/Tailwind)", company: "Kitabisa.com", location: "Remote", match: 85, type: "Full-time", source: "linkedin" },
-    { title: "Responsive Interface Intern", company: "Sayurbox", location: "Jakarta", match: 76, type: "Internship", source: "google" }
+    { title: "Responsive Interface Intern", company: "Sayurbox", location: "Jakarta", match: 76, type: "Internship", source: "glints" }
   ]
 };
 
@@ -160,16 +160,9 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
     });
   }, [actualJobs, search, sourceFilter]);
 
-  // Helper function to render a beautiful styled source badge
+  // Source badge — shows which platform to search on
   const renderSourceLabel = (src) => {
     switch(src) {
-      case 'google':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-[5px] border border-blue-100">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            Google Search
-          </span>
-        );
       case 'indeed':
         return (
           <span className="inline-flex items-center gap-1 text-[10.5px] font-mono font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-[5px] border border-indigo-100">
@@ -184,6 +177,13 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
             LinkedIn
           </span>
         );
+      case 'glints':
+        return (
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-mono font-medium text-pink-700 bg-pink-50 px-2 py-0.5 rounded-[5px] border border-pink-100">
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+            Glints
+          </span>
+        );
       case 'jobstreet':
       default:
         return (
@@ -195,20 +195,24 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
     }
   };
 
-  // Helper search url constructors
-  const getSearchUrl = (job, provider) => {
-    const qTerm = `${job.title} ${job.company} ${job.location || ''}`;
-    
-    if (provider === 'google') {
-      return `https://www.google.com/search?q=${encodeURIComponent(qTerm + ' lowongan kerja')}`;
-    } else if (provider === 'indeed') {
-      return `https://id.indeed.com/jobs?q=${encodeURIComponent(job.title)}&l=${encodeURIComponent(job.location)}`;
+  // Real platform search URLs — always returns live current listings for the role
+  const getPlatformSearchUrl = (job, provider) => {
+    const role = encodeURIComponent(job.title);
+    const loc = encodeURIComponent(job.location && job.location !== 'Remote' ? job.location : 'Indonesia');
+    if (provider === 'indeed') {
+      return `https://id.indeed.com/jobs?q=${role}&l=${loc}`;
     } else if (provider === 'jobstreet') {
-      return `https://www.jobstreet.co.id/id/job-search/${encodeURIComponent(job.title)}-jobs/`;
+      return `https://www.jobstreet.co.id/jobs?q=${role}&l=${loc}`;
+    } else if (provider === 'linkedin') {
+      return `https://www.linkedin.com/jobs/search/?keywords=${role}&location=${loc}&f_TPR=r2592000`;
+    } else if (provider === 'glints') {
+      return `https://glints.com/id/opportunities/jobs/explore?keyword=${role}&country=ID&locationName=${loc}`;
     } else {
-      return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title + ' ' + job.company)}`;
+      return `https://www.google.com/search?q=${encodeURIComponent(job.title + ' lowongan kerja ' + (job.location || 'Indonesia'))}`;
     }
   };
+
+  const getSearchUrl = (job, provider) => getPlatformSearchUrl(job, provider);
 
   return (
     <AnimatePresence>
@@ -241,9 +245,7 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
                   20 Lowongan {roleName} Terpilih
                 </h3>
                 <p className="text-[12.5px] text-muted-dark mt-1 mb-0 leading-relaxed">
-                  {isLive 
-                    ? "Gabungan dari 5+ platform kerja utama Indonesia, terfilter real-time sesuai preferensimu."
-                    : "Contoh pencarian lowongan dan shortcut platform kerja, disesuaikan dengan preferensimu."}
+                  Shortcut pencarian langsung ke platform kerja utama Indonesia — Jobstreet, LinkedIn, Indeed, dan Glints — sesuai role dan lokasimu.
                 </p>
               </div>
               <button 
@@ -302,15 +304,38 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
             {/* Jobs List container */}
             <div className="flex-1 overflow-y-auto p-5 space-y-3.5 bg-cream">
               {/* Alternative Career Search */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <a
-                  href={`https://www.google.com/search?q=${encodeURIComponent(roleName + ' ' + (locationInput || 'Jakarta') + ' lowongan kerja')}`}
+                  href={`https://glints.com/id/opportunities/jobs/explore?keyword=${encodeURIComponent(roleName)}&country=ID&locationName=${encodeURIComponent(locationInput || 'Indonesia')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full bg-[#fff9f6] text-orange-2 border border-orange/20 rounded-xl px-4 py-3 text-[13px] font-medium inline-flex items-center gap-2 transition-all hover:bg-orange/5 justify-center no-underline cursor-pointer shadow-xs"
+                  className="bg-[#fff9f6] text-orange-2 border border-orange/20 rounded-xl px-3 py-2.5 text-[12.5px] font-medium inline-flex items-center gap-2 transition-all hover:bg-orange/5 justify-center no-underline cursor-pointer shadow-xs"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                  <span>Cari Alternatif Lowongan {roleName} Lainnya</span>
+                  Cari di Glints
+                </a>
+                <a
+                  href={`https://www.jobstreet.co.id/jobs?q=${encodeURIComponent(roleName)}&l=${encodeURIComponent(locationInput || 'Indonesia')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#fff9f6] text-orange-2 border border-orange/20 rounded-xl px-3 py-2.5 text-[12.5px] font-medium inline-flex items-center gap-2 transition-all hover:bg-orange/5 justify-center no-underline cursor-pointer shadow-xs"
+                >
+                  Cari di Jobstreet
+                </a>
+                <a
+                  href={`https://id.indeed.com/jobs?q=${encodeURIComponent(roleName)}&l=${encodeURIComponent(locationInput || 'Indonesia')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#fff9f6] text-orange-2 border border-orange/20 rounded-xl px-3 py-2.5 text-[12.5px] font-medium inline-flex items-center gap-2 transition-all hover:bg-orange/5 justify-center no-underline cursor-pointer shadow-xs"
+                >
+                  Cari di Indeed
+                </a>
+                <a
+                  href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(roleName)}&location=${encodeURIComponent(locationInput || 'Indonesia')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#fff9f6] text-orange-2 border border-orange/20 rounded-xl px-3 py-2.5 text-[12.5px] font-medium inline-flex items-center gap-2 transition-all hover:bg-orange/5 justify-center no-underline cursor-pointer shadow-xs"
+                >
+                  Cari di LinkedIn
                 </a>
               </div>
 
@@ -383,34 +408,20 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
                       <span>{job.type}</span>
                     </div>
 
-                    {/* Dual Action Options: Google Search / Direct Source */}
+                    {/* Platform search links — goes to real live search results */}
                     <div className="grid grid-cols-2 gap-2">
-                      <a 
-                        href={getSearchUrl(job, 'google')}
+                      <a
+                        href={getPlatformSearchUrl(job, job.source)}
                         target="_blank"
                         rel="noopener noreferrer"
                         referrerPolicy="no-referrer"
-                        className="bg-cream hover:bg-cream-2 border border-border text-ink-2 font-sans text-[12.5px] font-medium py-1.5 px-3 rounded-[8px] inline-flex items-center justify-center gap-1.5 no-underline transition-colors hover:text-orange"
+                        className="bg-orange text-white hover:bg-orange-2 font-sans text-[12.5px] font-medium py-1.5 px-3 rounded-[8px] inline-flex items-center justify-center gap-1.5 no-underline transition-colors shadow-xs col-span-2"
                       >
                         <svg className="shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="11" cy="11" r="8"></circle>
                           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        Cari di Google
-                      </a>
-                      <a 
-                        href={getSearchUrl(job, job.source)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        referrerPolicy="no-referrer"
-                        className="bg-orange text-white hover:bg-orange-2 font-sans text-[12.5px] font-medium py-1.5 px-3 rounded-[8px] inline-flex items-center justify-center gap-1.5 no-underline transition-colors shadow-xs"
-                      >
-                        <span>Buka Sumber</span>
-                        <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                          <polyline points="15 3 21 3 21 9"></polyline>
-                          <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
+                        Cari Lowongan Serupa di {job.source === 'indeed' ? 'Indeed' : job.source === 'linkedin' ? 'LinkedIn' : job.source === 'glints' ? 'Glints' : 'Jobstreet'}
                       </a>
                     </div>
                   </div>
