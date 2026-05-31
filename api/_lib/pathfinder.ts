@@ -247,7 +247,7 @@ export function fallbackAnalysis(answers: string[], sessionId: string, lang = "i
   const isCyber = /\b(cyber|security|keamanan|siber|network|jaringan|packet|traffic|intrusion|threat|soc|siem|firewall|port\s*scan|portscan|detecting system|deteksi|vulnerability|owasp|incident|linux)\b/.test(joined);
   const isCreative = /\b(animasi|animation|animator|blender|3d|modeling|modelling|render|rendering|film|video|motion|storyboard|vfx|visual effect|cinematic|maya|after effects)\b/.test(joined);
   const isBackend = !isCyber && /\b(rest\s+api|api|backend|database|basis\s+data|server|express|node(?:\.js)?|postgres(?:ql)?|jwt|middleware|endpoint)\b/.test(joined);
-  const isUi = !isCyber && !isCreative && /ui|ux|figma|design|desain|wireframe/.test(joined);
+  const isUi = !isCyber && !isCreative && /ui|ux|figma|adobe\s*xd|design|desain|wireframe|prototype|usability|user.research/.test(joined);
   const isData = !isCyber && !isCreative && !isBackend && /data|sql|excel|spreadsheet|dashboard|analyst|python/.test(joined);
 
   const role = isCyber

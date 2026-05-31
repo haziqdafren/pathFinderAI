@@ -208,7 +208,7 @@ export default function JobsListDrawer({ isOpen, onClose, roleName, locationInpu
     } else if (provider === 'glints') {
       return `https://glints.com/id/opportunities/jobs/explore?keyword=${role}&country=ID&locationName=${loc}`;
     } else {
-      return `https://www.google.com/search?q=${encodeURIComponent(job.title + ' lowongan kerja ' + (job.location || 'Indonesia'))}`;
+      return `https://www.jobstreet.co.id/jobs?q=${role}&l=${loc}`;
     }
   };
 
