@@ -13,7 +13,7 @@ export default function SaveSheet() {
   const lang = localStorage.getItem('pref_lang') || 'id';
   const isEn = lang === 'en';
 
-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
+  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
 
   useEffect(() => {
     const openSheet = () => {

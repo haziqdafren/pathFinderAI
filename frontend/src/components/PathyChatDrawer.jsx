@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 
 export default function PathyChatDrawer({ isOpen, onClose, initialMessage, sessionData, setSessionData }) {
-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
+  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
   const name = sessionData?.user_name || 'Teman';
   const projectName = sessionData?.project?.name || 'proyek portofolio-mu';
   const lang = localStorage.getItem('pref_lang') || 'id';

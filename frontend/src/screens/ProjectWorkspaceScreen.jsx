@@ -153,7 +153,7 @@ const ALTERNATIVE_PROJECTS = {
 
 export default function ProjectWorkspaceScreen() {
   const navigate = useNavigate();
-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
+  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
   const lang = localStorage.getItem('pref_lang') || 'id';
   const isEn = lang === 'en';
   const [chatOpen, setChatOpen] = useState(false);

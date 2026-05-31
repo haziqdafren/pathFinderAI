@@ -210,7 +210,7 @@ export default function ResultsScreen() {
   const [mentorStyle, setMentorStyle] = useState('profesional');
 
   const navigate = useNavigate();
-  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true';
+  const isLoggedIn = sessionStorage.getItem('logged_in') === 'true' || localStorage.getItem('pathy_logged_in') === 'true';
 
   const [shufflesLeft, setShufflesLeft] = useState(parseInt(localStorage.getItem('pathy_shuffles_left') ?? '3', 10));
 
