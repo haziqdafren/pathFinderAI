@@ -1,9 +1,8 @@
 {
-  "projectId": "remixed-project-id",
-  "appId": "remixed-app-id",
-  "apiKey": "remixed-api-key",
-  "authDomain": "remixed-auth-domain",
-  "storageBucket": "remixed-storage-bucket",
-  "messagingSenderId": "remixed-messaging-sender-id",
-  "measurementId": "remixed-measurement-id"
+  "apiKey": "AIzaSyCJHged1scawSwyRhQmkom6TIEpBTkH3Y8",
+  "authDomain": "brilliant-pathway-lrcrp.firebaseapp.com",
+  "projectId": "brilliant-pathway-lrcrp",
+  "storageBucket": "brilliant-pathway-lrcrp.firebasestorage.app",
+  "messagingSenderId": "305185640440",
+  "appId": "1:305185640440:web:85ecd087adc5b59fef900d"
 }

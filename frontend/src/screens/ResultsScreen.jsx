@@ -242,18 +242,20 @@ export default function ResultsScreen() {
       return;
     }
     
-    const roleId = data?.top_roles?.[0]?.role_id || "";
+    const roleId = (data?.top_roles?.[0]?.role_id || "").toLowerCase();
+    const roleName = (data?.top_roles?.[0]?.role_name || "").toLowerCase();
+    const roleText = roleId + " " + roleName;
     let category = "web";
-    if (roleId.toLowerCase().includes("data_analyst") || roleId.toLowerCase().includes("bi_intern") || roleId.toLowerCase().includes("data_ops") || roleId.toLowerCase().includes("data")) {
-      category = "data";
-    } else if (roleId.toLowerCase().includes("uiux") || roleId.toLowerCase().includes("product_designer") || roleId.toLowerCase().includes("graphic")) {
-      category = "uiux";
-    } else if (roleId.toLowerCase().includes("backend") || roleId.toLowerCase().includes("devops")) {
-      category = "backend";
-    } else if (roleId.toLowerCase().includes("cyber") || roleId.toLowerCase().includes("network_engineer")) {
+    if (/cyber|security|keamanan|siber|soc|siem|network_engineer|threat|incident/.test(roleText)) {
       category = "cybersecurity";
-    } else if (roleId.toLowerCase().includes("anim") || roleId.toLowerCase().includes("3d") || roleId.toLowerCase().includes("motion") || roleId.toLowerCase().includes("blender")) {
+    } else if (/anim|3d|motion|blender|film|vfx|cinematic|renderer/.test(roleText)) {
       category = "creative3d";
+    } else if (/data_analyst|bi_intern|data_ops|data(?!base)|analyst|bi\b/.test(roleText)) {
+      category = "data";
+    } else if (/uiux|product_designer|graphic|ui.ux|figma|desain|design/.test(roleText)) {
+      category = "uiux";
+    } else if (/backend|devops|api|database|node|express|fastify/.test(roleText)) {
+      category = "backend";
     }
 
     const list = ALTERNATIVE_PROJECTS[category] || ALTERNATIVE_PROJECTS.web;
