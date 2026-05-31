@@ -12,6 +12,8 @@ const CACHE_TTL_MS = Number(process.env.ANALYSIS_CACHE_TTL_MS || 1_800_000);
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 9_000);
 const DEFAULT_AI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 const DEFAULT_SEARCH_AI_MODEL = process.env.GEMINI_SEARCH_MODEL || "gemini-3.5-flash";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 export const conversationSchema = z.object({
   question_index: z.number().int().min(0).max(10),
@@ -107,6 +109,17 @@ export function validate<T>(schema: z.ZodType<T>, req: any, res: any): T | null 
   return parsed.data;
 }
 
+function parseJsonText(text: string) {
+  return JSON.parse(String(text || "{}").replace(/```json/g, "").replace(/```/g, "").trim());
+}
+
+function withTimeout<T>(task: Promise<T>, label: string) {
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`${label} timed out after ${AI_TIMEOUT_MS}ms`)), AI_TIMEOUT_MS);
+  });
+  return Promise.race([task, timeout]);
+}
+
 function getAiClient() {
   const key = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
   if (!key) throw new Error("GEMINI_API_KEY is not configured");
@@ -114,25 +127,94 @@ function getAiClient() {
   return ai;
 }
 
-export async function generateJson(prompt: string, useSearch = false) {
+async function generateJsonWithGemini(prompt: string, useSearch = false) {
   const client = getAiClient();
   const config: any = { responseMimeType: "application/json" };
   if (useSearch) config.tools = [{ googleSearch: {} }];
 
-  const timeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Gemini generation timed out after ${AI_TIMEOUT_MS}ms`)), AI_TIMEOUT_MS);
-  });
-
-  const response: any = await Promise.race([
+  const response: any = await withTimeout(
     client.models.generateContent({
       model: useSearch ? DEFAULT_SEARCH_AI_MODEL : DEFAULT_AI_MODEL,
       contents: prompt,
       config,
     }),
-    timeout,
-  ]);
+    "Gemini generation",
+  );
 
-  return JSON.parse(String(response.text || "{}").replace(/```json/g, "").replace(/```/g, "").trim());
+  return parseJsonText(response.text || "{}");
+}
+
+async function generateJsonWithOpenRouter(prompt: string) {
+  const key = (process.env.OPENROUTER_API_KEY || "").trim();
+  if (!key) throw new Error("OPENROUTER_API_KEY is not configured");
+
+  const response = await withTimeout(
+    fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${key}`,
+        "HTTP-Referer": process.env.APP_URL || "https://pathfinder-ai-lyart.vercel.app",
+        "X-Title": "PathFinder AI",
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+      }),
+    }),
+    "OpenRouter generation",
+  );
+  const body = await response.text();
+  if (!response.ok) throw new Error(`OpenRouter ${response.status}: ${body.slice(0, 500)}`);
+  const data = JSON.parse(body);
+  return parseJsonText(data.choices?.[0]?.message?.content || "{}");
+}
+
+async function generateJsonWithGroq(prompt: string) {
+  const key = (process.env.GROQ_API_KEY || "").trim();
+  if (!key) throw new Error("GROQ_API_KEY is not configured");
+
+  const response = await withTimeout(
+    fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+      }),
+    }),
+    "Groq generation",
+  );
+  const body = await response.text();
+  if (!response.ok) throw new Error(`Groq ${response.status}: ${body.slice(0, 500)}`);
+  const data = JSON.parse(body);
+  return parseJsonText(data.choices?.[0]?.message?.content || "{}");
+}
+
+export async function generateJson(prompt: string, useSearch = false) {
+  const failures: string[] = [];
+  try {
+    return await generateJsonWithGemini(prompt, useSearch);
+  } catch (err: any) {
+    failures.push(`gemini:${err?.message || err?.name || "failed"}`);
+  }
+
+  for (const provider of [generateJsonWithOpenRouter, generateJsonWithGroq]) {
+    try {
+      return await provider(prompt);
+    } catch (err: any) {
+      failures.push(err?.message || err?.name || "provider failed");
+    }
+  }
+
+  throw new Error(`All AI providers failed: ${failures.join(" | ")}`);
 }
 
 export function analysisCacheKey(answers: string[], lang: string) {
@@ -239,10 +321,12 @@ export function readyPayload() {
   const configured = {
     gemini: Boolean(geminiKey),
     supabaseUrl: Boolean(supabaseUrl),
+    openrouter: Boolean((process.env.OPENROUTER_API_KEY || "").trim()),
+    groq: Boolean((process.env.GROQ_API_KEY || "").trim()),
     cacheTtlMs: CACHE_TTL_MS,
   };
   return {
-    status: configured.gemini ? "ready" : "degraded",
+    status: configured.gemini || configured.openrouter || configured.groq ? "ready" : "degraded",
     configured,
     cacheSize: analysisCache.size,
   };
