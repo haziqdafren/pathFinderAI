@@ -24,34 +24,41 @@ export default async function handler(req: any, res: any) {
     const prompt = `
 You are PathFinder AI, a career advisor for Indonesian IT fresh graduates.
 Analyze these 5 answers and return JSON only.
-Prioritize semantic fit over generic software roles:
-- Blender, animation, film, 3D, rendering, storyboard, or VFX => creative digital roles such as Junior 3D Animator, Motion Designer, 3D Artist.
-- Network detection, traffic monitoring, packet analysis, cyber, security, SIEM, SOC, vulnerability, or incident response => cybersecurity roles.
-- API/database/server/auth/backend => backend roles.
-- Dashboard/SQL/spreadsheet/data analysis => data roles.
-Do not force every profile into web developer or backend engineer.
-For live_jobs, use real companies/postings only when the provider has search grounding. If you are not sure, return credible role search examples and avoid claiming they are open postings.
+
+ROLE MATCHING RULES (strictly follow):
+- Blender, animation, film, 3D, rendering, storyboard, or VFX => role_id "creative3d", role_name "Junior 3D Animator" or "Motion Designer".
+- Network detection, traffic monitoring, packet analysis, cyber, security, SIEM, SOC, vulnerability, wireshark, CTF, incident response => role_id "cybersecurity", role_name "Junior Cybersecurity Analyst".
+- Figma, Adobe XD, wireframe, prototype, user research, usability, UI, UX, user interface, user experience => role_id "uiux", role_name "Junior UI/UX Designer". Do NOT classify these as Motion Designer.
+- API, database, server, auth, express, node, postgres, REST => role_id "backend", role_name "Junior Backend Developer".
+- SQL, Tableau, Excel, Power BI, data visualization, dashboard, data analysis, machine learning, kaggle => role_id "data", role_name "Junior Data Analyst".
+- HTML, CSS, React, Vue, Angular, JavaScript, TypeScript, frontend, web => role_id "web", role_name "Junior Web Developer".
+- If the input has NO clear IT skills (general interest only, non-technical hobbies), return top_roles as empty array [].
+- Do not force vague/non-technical profiles into any specific role.
 
 Answers:
 Name: ${body.answers[0]}
-Proof of work: ${body.answers[1]}
-Engaging task: ${body.answers[2]}
+Proof of work (tools/projects/skills): ${body.answers[1]}
+Most engaging task: ${body.answers[2]}
 Location: ${body.answers[3]}
 Timeline/blocker: ${body.answers[4]}
 
+For signal_chips: extract 2-4 SHORT keyword tags (2-4 words each) that summarize the candidate's actual demonstrated skills. Examples: "Figma + Prototyping", "Python + SQL", "Cyber + CTF", "Blender 3D". Never return "short signal" — always analyze the actual answers.
+
+For scout_message: write directly to the user ("you have", "your skills") — never use third person ("he", "she"). Write in ${isEn ? "English" : "Indonesian"}.
+
 Return this exact JSON shape:
 {
-  "user_name": "first name",
+  "user_name": "first name only",
   "readiness_score": 75,
-  "top_roles": [{"rank":1,"role_id":"data_analyst","role_name":"Junior Data Analyst","fit_score":82,"skills_shown":["SQL"],"job_count":8}],
-  "signal_chips": ["short signal"],
-  "skill_gaps": [{"skill":"Python","pct":80}],
-  "scout_message": "2-3 concrete sentences in ${isEn ? "English" : "Indonesian"}",
-  "follow_up_questions": ["question"],
-  "project_recommendation": {"name":"project","dataset_name":"dataset","duration_weeks":2,"skills_closed":["skill"],"tech_stack":["tool"],"week_1":"task","week_2":"task"},
-  "visual_roadmap": [{"day":7,"title":"Setup","task":"task"},{"day":30,"title":"Milestone","task":"task"},{"day":60,"title":"Polish","task":"task"},{"day":90,"title":"Deploy","task":"task"}],
+  "top_roles": [{"rank":1,"role_id":"uiux","role_name":"Junior UI/UX Designer","fit_score":82,"skills_shown":["Figma","Adobe XD"],"job_count":8}],
+  "signal_chips": ["Figma + Prototyping","User Research","Wireframing"],
+  "skill_gaps": [{"skill":"Figma Advanced","pct":60}],
+  "scout_message": "2-3 concrete sentences addressing the user directly in ${isEn ? "English" : "Indonesian"}",
+  "follow_up_questions": ["one question"],
+  "project_recommendation": {"name":"project name","dataset_name":"dataset or asset name","duration_weeks":2,"skills_closed":["skill1"],"tech_stack":["tool1"],"week_1":"specific task","week_2":"specific task"},
+  "visual_roadmap": [{"day":7,"title":"Setup","task":"specific task"},{"day":30,"title":"Milestone","task":"specific task"},{"day":60,"title":"Polish","task":"specific task"},{"day":90,"title":"Deploy","task":"specific task"}],
   "jobs_analyzed": 20,
-  "live_jobs": [{"title":"role","company":"company","location":"location","match":82,"type":"Full-time"}]
+  "live_jobs": [{"title":"role","company":"real Indonesian company","location":"city","match":82,"type":"Full-time"}]
 }`;
     let result;
     try {

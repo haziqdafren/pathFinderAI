@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './utils/supabase';
 import { Toaster } from 'sonner';
 import HomeScreen from './screens/HomeScreen';
@@ -63,6 +64,7 @@ function App() {
         </Routes>
       </Suspense>
       <SaveSheet />
+      <Analytics />
     </Router>
   );
 }
