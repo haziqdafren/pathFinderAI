@@ -14,6 +14,15 @@ export default function LoadingScreen() {
   const isEn = lang === 'en';
   
   const userName = answersData[0]?.trim() || (isEn ? 'my friend' : 'Teman');
+  const joinedAnswers = `${answersData[1] || ''} ${answersData[2] || ''}`.toLowerCase();
+  const localField = (() => {
+    if (/\b(cyber|security|keamanan|siber|network|jaringan|packet|traffic|threat|soc|siem|firewall|port|vulnerability|owasp|incident|linux|deteksi|detecting)\b/.test(joinedAnswers)) return 'cybersecurity';
+    if (/\b(animasi|animation|animator|blender|3d|modeling|modelling|render|film|video|motion|storyboard|vfx)\b/.test(joinedAnswers)) return 'creative3d';
+    if (/\b(data|sql|excel|spreadsheet|dashboard|analyst|python)\b/.test(joinedAnswers)) return 'data';
+    if (/\b(ui|ux|figma|design|desain|wireframe)\b/.test(joinedAnswers)) return 'uiux';
+    if (/\b(api|backend|database|server|express|node|postgres|jwt|middleware)\b/.test(joinedAnswers)) return 'backend';
+    return 'web';
+  })();
   
   // Dynamic category detector to make scanner immersion genuine
   const q1Content = (answersData[1] || "").toLowerCase();
@@ -31,6 +40,15 @@ export default function LoadingScreen() {
     q2Content.includes("siber") || q2Content.includes("jaringan") || q2Content.includes("network")
   ) {
     resolvedField = "cybersecurity";
+  } else if (
+    q1Content.includes("animasi") || q1Content.includes("animation") || q1Content.includes("animator") ||
+    q1Content.includes("blender") || q1Content.includes("3d") || q1Content.includes("render") ||
+    q1Content.includes("film") || q1Content.includes("motion") || q1Content.includes("storyboard") ||
+    q2Content.includes("animasi") || q2Content.includes("animation") || q2Content.includes("animator") ||
+    q2Content.includes("blender") || q2Content.includes("3d") || q2Content.includes("render") ||
+    q2Content.includes("film") || q2Content.includes("motion") || q2Content.includes("storyboard")
+  ) {
+    resolvedField = "creative3d";
   } else if (
     q1Content.includes("data") || q1Content.includes("sql") || q1Content.includes("excel") || 
     q1Content.includes("analyst") || q1Content.includes("spreadsheet") || q1Content.includes("python") ||
@@ -82,6 +100,15 @@ export default function LoadingScreen() {
     { role: 'Junior SOC Analyst', co: 'LRT Jakarta · Jakarta', tag: 'matched' }
   ];
 
+  const creativeJobs = [
+    { role: 'Junior 3D Animator', co: 'Agate Studio · Bandung', tag: 'matched' },
+    { role: 'Motion Designer Intern', co: 'Dentsu · Jakarta', tag: 'matched' },
+    { role: 'Blender Generalist', co: 'Brandoville · Jakarta', tag: 'matched' },
+    { role: '3D Artist Junior', co: 'Infinite Studios · Batam', tag: 'matched' },
+    { role: 'Video & Motion Graphics Assistant', co: 'Ruangguru · remote', tag: '' },
+    { role: 'Storyboard & Animation Junior', co: 'MD Animation · Jakarta', tag: 'matched' }
+  ];
+
   const uiuxJobs = [
     { role: 'Junior UI/UX Designer', co: 'BFI Finance · Tangerang', tag: 'matched' },
     { role: 'Product Design Intern', co: 'Tiket.com · Jakarta', tag: 'matched' },
@@ -119,6 +146,7 @@ export default function LoadingScreen() {
 
   let defaultJobs = webJobs;
   if (resolvedField === "cybersecurity") defaultJobs = cyberJobs;
+  else if (resolvedField === "creative3d") defaultJobs = creativeJobs;
   else if (resolvedField === "data") defaultJobs = dataJobs;
   else if (resolvedField === "uiux") defaultJobs = uiuxJobs;
   else if (resolvedField === "backend") defaultJobs = backendJobs;
@@ -147,22 +175,50 @@ export default function LoadingScreen() {
         }
       } catch (err) {
         console.error("Backend error:", err);
-        // Fallback session on error so results page uses local cache logic
-        sessionStorage.setItem('pathfinder_session', JSON.stringify({
-          session_id: 'error_fallback',
-          results: {
-            session_id: 'error_fallback',
-            user_name: localStorage.getItem('pathy_user_name') || "Teman",
-            readiness_score: 55,
-            top_roles: [
-              { rank: 1, role_name: "Web Developer", role_id: "web_dev", fit_score: 75, skills_shown: ["HTML", "CSS"], job_count: 5 },
-            ],
-            signal_chips: ["Mempelajari hal baru", "Belum ada portfolio khusus"],
-            skill_gaps: [
-              { skill: "React.js / Frontend Framework", count: 12, total: 20 },
-              { skill: "Backend Integration", count: 8, total: 20 }
-            ],
-            scout_message: `Waktu analisis dari AI sedang tinggi atau tidak tersedia. PathFinder menampilkan simulasi data jatuh-kembali (fallback) ini agar kamu bisa melihat contoh laporan. Coba ulang lagi nanti dengan API Key aktif.`,
+        const localFallbacks = {
+          cybersecurity: {
+            role: "Junior Cybersecurity Analyst",
+            role_id: "cybersecurity_analyst",
+            skills: ["Network Security", "Threat Detection", "Incident Response"],
+            gaps: ["Linux Networking & Packet Analysis", "Security Report Writing"],
+            project: {
+              name: "Network Traffic Detection Lab",
+              dataset_name: "PCAP Sample Traffic Dataset",
+              duration_weeks: 3,
+              skills_closed: ["Packet Analysis", "Threat Detection", "Security Reporting"],
+              tech_stack: ["Python", "Wireshark", "Suricata"],
+              week_1: "Week 1: Capture safe sample traffic and label normal vs suspicious patterns.",
+              week_2: "Week 2: Build detection rules, export findings, and write a concise incident report."
+            },
+            jobs: [
+              { title: "Junior Cybersecurity Analyst", company: "Telkomsigma", location: "Jakarta", match: 82, type: "Full-time (Search Example)", is_fallback: true },
+              { title: "SOC Analyst Intern", company: "ITSEC Asia", location: "Jakarta", match: 76, type: "Internship (Search Example)", is_fallback: true }
+            ]
+          },
+          creative3d: {
+            role: "Junior 3D Animator",
+            role_id: "junior_3d_animator",
+            skills: ["Blender", "3D Animation", "Storyboarding"],
+            gaps: ["Animation Reel Polish", "Lighting & Rendering Breakdown"],
+            project: {
+              name: "Short 3D Animation Portfolio Film",
+              dataset_name: "Blender Scene & Shot Breakdown",
+              duration_weeks: 3,
+              skills_closed: ["Storyboarding", "3D Animation", "Lighting & Rendering"],
+              tech_stack: ["Blender", "DaVinci Resolve", "ArtStation"],
+              week_1: "Week 1: Create storyboard, asset list, camera plan, and one polished test shot.",
+              week_2: "Week 2: Animate a 20-30 second sequence, render it, and publish a breakdown reel."
+            },
+            jobs: [
+              { title: "Junior 3D Animator", company: "Agate Studio", location: "Bandung", match: 82, type: "Full-time (Search Example)", is_fallback: true },
+              { title: "Motion Designer Intern", company: "Dentsu Indonesia", location: "Jakarta", match: 74, type: "Internship (Search Example)", is_fallback: true }
+            ]
+          },
+          web: {
+            role: "Junior Web Developer",
+            role_id: "web_dev",
+            skills: ["HTML", "CSS", "Frontend Basics"],
+            gaps: ["React.js / Frontend Framework", "Backend Integration"],
             project: {
               name: "Customer Interactive Web Dashboard",
               dataset_name: "Product Catalog Dataset",
@@ -172,6 +228,27 @@ export default function LoadingScreen() {
               week_1: "Week 1: Membuat rancangan layout interaktif responsif pada semua ukuran layar.",
               week_2: "Week 2: Tambahkan fetch data dari dummy API serta pasang fungsionalitas visual filter."
             },
+            jobs: [
+              { title: "Frontend Web Developer", company: "Bukalapak", location: "Jakarta", match: 75, type: "Full-time (Search Example)", is_fallback: true },
+              { title: "React Developer Intern", company: "Tokopedia", location: "Jakarta", match: 70, type: "Internship (Search Example)", is_fallback: true }
+            ]
+          }
+        };
+        const fallback = localFallbacks[localField] || localFallbacks.web;
+        // Fallback session on error so results page uses local cache logic
+        sessionStorage.setItem('pathfinder_session', JSON.stringify({
+          session_id: 'error_fallback',
+          results: {
+            session_id: 'error_fallback',
+            user_name: localStorage.getItem('pathy_user_name') || "Teman",
+            readiness_score: 55,
+            top_roles: [
+              { rank: 1, role_name: fallback.role, role_id: fallback.role_id, fit_score: 75, skills_shown: fallback.skills, job_count: 5 },
+            ],
+            signal_chips: ["Mempelajari hal baru", "Belum ada portfolio khusus"],
+            skill_gaps: fallback.gaps.map((skill, idx) => ({ skill, count: idx === 0 ? 12 : 8, total: 20 })),
+            scout_message: `Waktu analisis dari AI sedang tinggi atau tidak tersedia. PathFinder menampilkan simulasi data jatuh-kembali (fallback) ini agar kamu bisa melihat contoh laporan. Coba ulang lagi nanti dengan API Key aktif.`,
+            project: fallback.project,
             visual_roadmap: [
               { day: 7, title: "Foundation", task: "Setup repository & React basic routing." },
               { day: 30, title: "Milestone 1", task: "Build the visual components layout." },
@@ -182,11 +259,7 @@ export default function LoadingScreen() {
             jobs_source: "Local fallback",
             is_live: false,
             fetched_at: new Date().toISOString(),
-            live_jobs: [
-              { title: "Frontend Web Developer", company: "Simulated Bukalapak", location: "Jakarta", match: 75, type: "Full-time (Sample)", is_fallback: true },
-              { title: "React Developer Intern", company: "Simulated Tokopedia", location: "Jakarta", match: 70, type: "Internship (Sample)", is_fallback: true },
-              { title: "Web Developer", company: "Simulated Sayurbox", location: "Bandung", match: 65, type: "Full-time (Sample)", is_fallback: true }
-            ]
+            live_jobs: fallback.jobs
           },
           error: "Backend took too long or failed"
         }));

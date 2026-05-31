@@ -35,10 +35,7 @@ export default function LoginScreen() {
       return;
     }
 
-    await supabase?.auth?.signOut();
-    sessionStorage.removeItem('logged_in');
-    localStorage.removeItem('pathy_logged_in');
-    toast.error(isEn ? "Please complete the career interview first so PathFinder has a profile to save." : "Silakan selesaikan interview karir dulu supaya PathFinder punya profil yang bisa disimpan.");
+    toast.success(isEn ? "Signed in. Complete the career interview so PathFinder can save your first profile." : "Berhasil masuk. Selesaikan interview karir supaya PathFinder bisa menyimpan profil pertamamu.");
     navigate('/conversation');
   };
 

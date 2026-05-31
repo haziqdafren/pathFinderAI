@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getNextQuestion } from '../utils/api';
 import { detectNonsenseInput } from '../utils/validation';
@@ -92,7 +92,7 @@ const STEP_SUGGESTIONS = {
     "Sering kelupaan waktu kalau dapet task belajar framework / AI baru"
   ],
   3: ["Jakarta", "Bandung", "Surabaya", "Yogyakarta", "Semarang", "Malang", "Bali", "Batam", "Remote", "Luar Negeri", "Mana aja asal perusahaannya cocok"],
-  4: ["Siap melamar bulan ini, blocker utama portfolio belum rapi", "Kira-kira 1-3 bulan lagi, masih perlu latihan interview", "Semester depan, sekarang masih padat kuliah", "Lulusnya masih tahun depan, ingin bangun portfolio dari sekarang", "Belum buru-buru, masih mencari role paling cocok"]
+  4: ["Siap melamar bulan ini, kendala utama portfolio belum rapi", "Kira-kira 1-3 bulan lagi, masih perlu latihan interview", "Semester depan, sekarang masih padat kuliah", "Lulusnya masih tahun depan, ingin bangun portfolio dari sekarang", "Belum buru-buru, masih mencari role paling cocok"]
 };
 
 const EN_STEP_SUGGESTIONS = {
@@ -138,7 +138,7 @@ const EN_STEP_SUGGESTIONS = {
     "Instantly lose track of hours when studying a brand-new framework"
   ],
   3: ["Jakarta", "Bandung", "Surabaya", "Yogyakarta", "Remote", "Overseas", "Anywhere matching targets"],
-  4: ["Ready to apply this month, main blocker is portfolio polish", "Within 1-3 months, still need interview practice", "Next semester, current blocker is college workload", "Graduating next year, want to build portfolio now", "No rush, still exploring the best-fit role"]
+  4: ["Ready to apply this month, main challenge is polishing my portfolio", "Within 1-3 months, still need interview practice", "Next semester, current blocker is college workload", "Graduating next year, want to build portfolio now", "No rush, still exploring the best-fit role"]
 };
 
 // Helper for smarter suggestion filtering
@@ -191,6 +191,11 @@ export default function ConversationScreen() {
   const [answers, setAnswers] = useState(['', '', '', '', '']);
   const [questions, setQuestions] = useState(isEn ? EN_INITIAL_QUESTIONS : INITIAL_QUESTIONS);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    sessionStorage.removeItem('pathfinder_session');
+    sessionStorage.removeItem('pathfinder_session_id');
+  }, []);
 
   const currentAnswer = answers[step] || '';
   const charCount = currentAnswer.length;
